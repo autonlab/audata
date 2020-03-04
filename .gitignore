@@ -1,0 +1,7 @@
+.vscode/
+dist/
+build/
+*.egg-info/
+*.pyc
+*.h5
+test/*/
