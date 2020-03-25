@@ -13,7 +13,7 @@ class AUDataset:
         self._af = af
 
         if path not in self._af._f or not isinstance(self._af._f[path], h5.Dataset):
-            raise Exception('Path {} is not a dataset in {}'.format(path, self._af._f.filename))
+            raise Exception(f'Path {path} is not a dataset in {self._af._f.filename}')
 
         self._path = path
         self._root = af._f[path]
@@ -21,10 +21,22 @@ class AUDataset:
     @classmethod
     def new(cls, af, path, value, overwrite=False):
         if path in af._f and not overwrite:
-            raise Exception('{} already exists.'.format(path))
+            raise Exception(f'{path} already exists.')
+
+        # If given an HDF5 dataset, read in all of its data (as a numpy ndarray).
+        if isinstance(value, h5.Dataset):
+            value = value[:]
+
+        # ATW: TODO: This should be less hacky than converting to a Pandas DataFrame
+        # only to be converted back to a recarray later...
+        if isinstance(value, (np.ndarray, np.recarray)):
+            value = pd.DataFrame(data=value)
 
         if isinstance(value, pd.DataFrame):
             return cls.__new_from_dataframe(af, path, value)
+
+        else:
+            raise Exception(f'Unsure how to convert type {type(value)}')
 
     @classmethod
     def __new_from_dataframe(cls, af, path, df):
