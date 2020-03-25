@@ -9,15 +9,16 @@ import numpy as np
 from . import __VERSION_LIST__, __DATA_VERSION__
 from .utils import json2dict, dict2json
 from .AUGroup import AUGroup
-from .AUDataset import AUDataset
 
-class AUFile:
+class AUFile(AUGroup):
     DateTimeFormat = '%Y-%m-%d %H:%M:%S.%f %Z'
 
-    def __init__(self):
-        self._f = None
-        self._filename = None
-        self._time_reference = None
+    def __init__(self, file, time_reference=None):
+        if not isinstance(file, h5.File):
+            raise Exception(f'Invalid file type: {type(file)}')
+
+        self._time_reference = time_reference
+        super().__init__(file)
 
     def __del__(self):
         if self is not None:
@@ -29,6 +30,9 @@ class AUFile:
 
     @time_reference.setter
     def time_reference(self, new_ref):
+        if not self.valid:
+            raise Exception('Attempting to use uninitialized AUFile!')
+
         # If it's a date/time string, that's fine, but try to parse it first to make sure
         # the format is always consistent.
         if isinstance(new_ref, str):
@@ -42,9 +46,9 @@ class AUFile:
             self._time_reference = new_ref
             new_ref_str = new_ref.strftime(AUFile.DateTimeFormat)
 
-            data = self.data
+            data = self.meta_data
             data['time']['origin'] = new_ref_str
-            self._f['.meta'].attrs['data'] = dict2json(data)
+            self._h5['.meta'].attrs['data'] = dict2json(data)
 
     @classmethod
     def new(cls, filename, overwrite=False, time_reference='now',
@@ -70,19 +74,8 @@ class AUFile:
                 'units': 'seconds'
             }
         })
-        c = cls()
-        c._f = f
-        c._filename = filename
-        c._time_reference = time_reference
+        c = cls(f, time_reference)
         return c
-
-    @property
-    def audata(self):
-        return json2dict(self._f['.meta'].attrs['audata'])
-
-    @property
-    def data(self):
-        return json2dict(self._f['.meta'].attrs['data'])
 
     @classmethod
     def open(cls, filename, create=False, readonly=True):
@@ -90,43 +83,15 @@ class AUFile:
             if create: return cls.new(filename)
             else: raise Exception(f'File not found: {filename}')
 
-        c = cls()
-        c._f = h5.File(filename, 'r' if readonly else 'a')
-        c._filename = filename
-        c._time_reference = parser.parse(c.data['time']['origin'])
+        f = h5.File(filename, 'r' if readonly else 'a')
+        c = cls(f)
+        c._time_reference = parser.parse(c.meta_data['time']['origin'])
         return c
 
-    def __getitem__(self, key):
-        if self._f is None:
-            raise Exception('No file opened.')
-
-        if key == '':
-            return AUGroup(self, key)
-
-        if key in self._f:
-            if isinstance(self._f[key], h5.Dataset):
-                return AUDataset(self, key)
-            elif isinstance(self._f[key], h5.Group):
-                return AUGroup(self, key)
-            else:
-                raise Exception('Unsure how to handle class: {}'.format(type(self._f[key])))
-        else:
-            return None
-
-    def __setitem__(self, key, value):
-        if self._f is None:
-            raise Exception('No file opened.')
-
-        if value is None:
-            if key in self._f:
-                del self._f[key]
-        else:
-            AUDataset.new(self, key, value, overwrite=True)
-
     def close(self):
-        if self._f is not None:
-            self._f.close()
-            self._f = None
+        if self._h5 is not None:
+            self._h5.close()
+            self.clear()
 
     def __repr__(self):
         return self.__getitem__('').__repr__()

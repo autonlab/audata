@@ -5,14 +5,14 @@ import jsbeautifier as jsb
 import json
 
 
-def df_from_audata(rec, meta, time_ref=None, string_ref=None):
+def df_from_audata(rec, meta, time_ref=None, string_ref=None, idx=slice(-1)):
     df = pd.DataFrame(data=rec)
     for col in meta['columns']:
         m = meta['columns'][col]
         if m['type'] == 'string':
             if string_ref is None:
                 raise Exception('Cannot read strings without reference!')
-            df[col] = string_ref[col]
+            df[col] = string_ref[col][idx]
         elif m['type'] == 'factor':
             df[col] = pd.Categorical.from_codes(df[col].values, m['levels'])
         elif m['type'] == 'time':

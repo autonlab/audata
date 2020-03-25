@@ -3,28 +3,38 @@ import pandas as pd
 import h5py as h5
 
 from . import utils
+from .AUElement import AUElement
 
 
-class AUDataset:
-    def __init__(self, af, path):
-        # if not isinstance(af, AUFile):
-        #     raise Exception('Invalid AUFile file.')
+class AUDataset(AUElement):
+    def __init__(self, au_parent, name):
+        if not isinstance(au_parent, AUElement):
+            raise Exception(f'Invalid parent: {type(au_parent)}')
 
-        self._af = af
+        parent = au_parent._h5
+        if not isinstance(parent, h5.Group):
+            raise Exception(f'Invalid parent: {type(parent)}')
 
-        if path not in self._af._f or not isinstance(self._af._f[path], h5.Dataset):
-            raise Exception(f'Path {path} is not a dataset in {self._af._f.filename}')
+        if name not in parent or not isinstance(parent[name], h5.Dataset):
+            raise Exception(f'Path {name} is not a dataset in {parent.file.filename}:{parent.name}')
 
-        self._path = path
-        self._root = af._f[path]
+        super().__init__(au_parent, name)
 
     @classmethod
-    def new(cls, af, path, value, overwrite=False):
-        if path in af._f and not overwrite:
-            raise Exception(f'{path} already exists.')
+    def new(cls, au_parent, name, value, overwrite=False):
+        if not isinstance(au_parent, AUElement):
+            raise Exception('Must send AUElement.')
 
-        # If given an HDF5 dataset, read in all of its data (as a numpy ndarray).
-        if isinstance(value, h5.Dataset):
+        parent = au_parent._h5
+        if not isinstance(parent, h5.Group):
+            raise Exception(f'Invalid parent: {type(parent)}')
+
+        if name in parent and not overwrite:
+            raise Exception(f'{name} already exists.')
+
+        # If given an HDF5 dataset or an AUDataset, read in all of its data
+        # (HDF5 dataset as a numpy ndarray, AUDataset as a pandas DataFrame).
+        if isinstance(value, (h5.Dataset, AUDataset)):
             value = value[:]
 
         # ATW: TODO: This should be less hacky than converting to a Pandas DataFrame
@@ -33,45 +43,48 @@ class AUDataset:
             value = pd.DataFrame(data=value)
 
         if isinstance(value, pd.DataFrame):
-            return cls.__new_from_dataframe(af, path, value)
+            return cls.__new_from_dataframe(au_parent, name, value)
 
         else:
             raise Exception(f'Unsure how to convert type {type(value)}')
 
     @classmethod
-    def __new_from_dataframe(cls, af, path, df):
-        meta, strings, recs = utils.audata_from_df(df, time_ref=af.time_reference)
-        af._f.create_dataset(
-            path, chunks=True, maxshape=(None,),
+    def __new_from_dataframe(cls, au_parent, name, df):
+        meta, strings, recs = utils.audata_from_df(df, time_ref=au_parent.file.time_reference)
+        au_parent._h5.create_dataset(
+            name, chunks=True, maxshape=(None,),
             compression='gzip', shuffle=True, fletcher32=True, data=recs)
-        af._f[path].attrs['.meta'] = utils.dict2json(meta)
+        au_parent._h5[name].attrs['.meta'] = utils.dict2json(meta)
         if len(strings) > 0:
             for strcol in strings:
-                af._f.create_dataset(
-                    '.meta/strings/{}/{}'.format(path, strcol), chunks=True, maxshape=(None,),
+                au_parent._h5.file.create_dataset(
+                    f'.meta/strings/{name}/{strcol}', chunks=True, maxshape=(None,),
                     compression='gzip', shuffle=True, fletcher32=True,
                     dtype=h5.string_dtype(), data=strings[strcol])
-        return cls(af, path)
+        d = cls(au_parent, name)
+        return d
 
-    def __getitem__(self, *args, **kwargs):
-        rec = self._root.__getitem__(*args, **kwargs)
+    def __getitem__(self, idx=slice(-1)):
+        rec = self._h5[idx]
+        if isinstance(rec, np.void):
+            rec = np.array([rec], dtype=rec.dtype)
         meta = self.meta
-        string_path = f'.meta/strings/{self._path}'
-        string_ref = self._af._f['.meta/strings/{}'.format(self._path)] if string_path in self._af._f else None
-        df = utils.df_from_audata(rec, meta, self._af.time_reference, string_ref)
+        string_name = f'.meta/strings/{self.name}'
+        string_ref = self._h5.file[string_name] if string_name in self._h5.file else None
+        df = utils.df_from_audata(rec, meta, self.file.time_reference, string_ref, idx)
         return df
 
     @property
-    def meta(self):
-        return utils.json2dict(self._root.attrs['.meta'])
-
-    @property
     def ncol(self):
-        return len(self._root.dtype)
+        return len(self._h5.dtype)
 
     @property
     def nrow(self):
-        return len(self._root)
+        return len(self._h5)
+
+    @property
+    def columns(self):
+        return self.meta['columns']
 
     @property
     def shape(self):
@@ -83,13 +96,13 @@ class AUDataset:
                 return s[:(N-3)] + '...'
             else:
                 return s
-        meta = self.meta
         lines = []
         ncol = self.ncol
         nrow = self.nrow
-        lines.append('{}: Dataset [{} rows x {} cols]'.format(self._path, nrow, ncol))
-        for col in meta['columns']:
-            c = meta['columns'][col]
+        lines.append(f'{self.name}: Dataset [{nrow} rows x {ncol} cols]')
+        cols = self.columns
+        for col in cols:
+            c = cols[col]
             if c['type'] == 'integer':
                 tstr = 'integer ({})'.format('signed' if c['signed'] else 'unsigned')
             elif c['type'] == 'factor':
@@ -97,10 +110,10 @@ class AUDataset:
                 lvls = ', '.join([trunc(lvl) for lvl in c['levels'][:min(3,nlevels)]])
                 if nlevels > 3:
                     lvls += ', ...'
-                tstr = 'factor with {} levels [{}]'.format(nlevels, lvls)
+                tstr = f'factor with {nlevels} levels [{lvls}]'
             else:
                 tstr = c['type']
-            lines.append('  {}: {}'.format(col, tstr))
+            lines.append(f'  {col}: {tstr}')
         return '\n'.join(lines)
 
     def __str__(self):
