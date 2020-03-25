@@ -1,13 +1,14 @@
 import pandas as pd
 import numpy as np
-import audata as aud
 
 import datetime as dt
 from dateutil import parser
 import lorem
 
+from .. import AUFile
 
-f = aud.AUFile.new('test.h5', overwrite=True)
+
+f = AUFile.new('test.h5', overwrite=True)
 
 # Writing a matrix.
 f['mymat'] = np.ones([100, 300])
@@ -34,6 +35,20 @@ print(f['.meta'])
 print(f.time_reference)
 print(f._f['.meta/strings/mydf/strings'])
 print(f['mydf'])
-print(f['mydf'].data())
+print(f['mydf'][:])
+
+f.close()
+
+# Open the created file and do the same thing.
+print('Testing openeing file we just created:')
+f = AUFile.open('test.h5')
+
+# Read some data.
+print(f)
+print(f['.meta'])
+print(f.time_reference)
+print(f._f['.meta/strings/mydf/strings'])
+print(f['mydf'])
+print(f['mydf'][:])
 
 f.close()

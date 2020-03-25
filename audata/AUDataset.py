@@ -1,4 +1,3 @@
-import json
 import numpy as np
 import pandas as pd
 import h5py as h5
@@ -33,7 +32,7 @@ class AUDataset:
         af._f.create_dataset(
             path, chunks=True, maxshape=(None,),
             compression='gzip', shuffle=True, fletcher32=True, data=recs)
-        af._f[path].attrs['.meta'] = json.dumps(meta)
+        af._f[path].attrs['.meta'] = utils.dict2json(meta)
         if len(strings) > 0:
             for strcol in strings:
                 af._f.create_dataset(
@@ -42,16 +41,17 @@ class AUDataset:
                     dtype=h5.string_dtype(), data=strings[strcol])
         return cls(af, path)
 
-    def data(self):
-        rec = self._root[:]
+    def __getitem__(self, *args, **kwargs):
+        rec = self._root.__getitem__(*args, **kwargs)
         meta = self.meta
-        string_ref = self._af._f['.meta/strings/{}'.format(self._path)]
+        string_path = f'.meta/strings/{self._path}'
+        string_ref = self._af._f['.meta/strings/{}'.format(self._path)] if string_path in self._af._f else None
         df = utils.df_from_audata(rec, meta, self._af.time_reference, string_ref)
         return df
 
     @property
     def meta(self):
-        return json.loads(self._root.attrs['.meta'])
+        return utils.json2dict(self._root.attrs['.meta'])
 
     @property
     def ncol(self):

@@ -19,10 +19,19 @@ setup(
     long_description=read('readme.md'),
     author='Anthony Wertz',
     author_email='awertz@cmu.edu',
-    license='Proprietary',
+    license='GNU LGPL 3',
     entry_points={
         'console_scripts': ['csv2audata=audata.bin.csv2audata:main']
     },
+    install_requires=[
+        'numpy',
+        'pandas',
+        'h5py',
+        'jsbeautifier',
+        'lorem',
+        'tzlocal',
+        'h5py'
+    ],
     include_dirs=[np.get_include()],
     packages=find_packages()
 )

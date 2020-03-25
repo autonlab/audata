@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 import h5py as h5
+import jsbeautifier as jsb
+import json
 
 
 def df_from_audata(rec, meta, time_ref=None, string_ref=None):
@@ -62,3 +64,14 @@ def audata_from_df(df, time_ref=None):
     meta = {'columns': columns}
     rec = df.to_records(index=False)
     return meta, strings, rec
+
+def json2dict(json_str):
+    if not isinstance(json_str, str):
+        raise Exception(f'Expecting string, found {type(json_str)}')
+    return json.loads(json_str)
+
+def dict2json(json_dict, format=True):
+    if not isinstance(json_dict, dict):
+        raise Exception(f'Expecting dictionary, found {type(json_dict)}')
+    json_str = json.dumps(json_dict)
+    return jsb.beautify(json_str) if format else json_str
