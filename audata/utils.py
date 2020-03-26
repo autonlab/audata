@@ -18,9 +18,9 @@ def df_from_audata(rec, meta, time_ref=None, string_ref=None, idx=slice(-1)):
         elif m['type'] == 'time':
             if time_ref is None:
                 raise Exception('Cannot read timestamps without reference!')
-            df[col] = np.datetime64(time_ref) + np.timedelta64(1, 's')*df[col].values
+            df[col] = np.datetime64(time_ref) + df[col].values * 10**9 * np.timedelta64(1, 'ns')
         elif m['type'] == 'timedelta':
-            df[col] = np.timedelta64(1, 's')*df[col].values
+            df[col] = df[col].values * 10**9 * np.timedelta64(1, 'ns')
     return df
 
 def audata_from_df(df, time_ref=None):
