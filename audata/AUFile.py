@@ -93,6 +93,12 @@ class AUFile(AUGroup):
             self._h5.close()
             self.clear()
 
+    def flush(self):
+        if self._h5 is not None:
+            self._h5.flush()
+        else:
+            raise Exception('No file opened!')
+
     def __repr__(self):
         return self.__getitem__('').__repr__()
 
