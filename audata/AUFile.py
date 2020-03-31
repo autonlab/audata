@@ -13,11 +13,12 @@ from .AUGroup import AUGroup
 class AUFile(AUGroup):
     DateTimeFormat = '%Y-%m-%d %H:%M:%S.%f %Z'
 
-    def __init__(self, file, time_reference=None):
+    def __init__(self, file, time_reference=None, return_datetimes=True):
         if not isinstance(file, h5.File):
             raise Exception(f'Invalid file type: {type(file)}')
 
         self._time_reference = time_reference
+        self.return_datetimes = return_datetimes
         super().__init__(file)
 
     def __del__(self):
@@ -52,7 +53,7 @@ class AUFile(AUGroup):
 
     @classmethod
     def new(cls, filename, overwrite=False, time_reference='now',
-            title=None, author=None, organization=None, **kwargs):
+            title=None, author=None, organization=None, return_datetimes=True, **kwargs):
         if os.path.exists(filename) and not overwrite:
             raise Exception('File "{}" already exists!'.format(filename))
 
@@ -74,17 +75,17 @@ class AUFile(AUGroup):
                 'units': 'seconds'
             }
         })
-        c = cls(f, time_reference)
+        c = cls(f, time_reference=time_reference, return_datetimes=return_datetimes)
         return c
 
     @classmethod
-    def open(cls, filename, create=False, readonly=True):
+    def open(cls, filename, create=False, readonly=True, return_datetimes=True):
         if not os.path.exists(filename):
             if create: return cls.new(filename)
             else: raise Exception(f'File not found: {filename}')
 
         f = h5.File(filename, 'r' if readonly else 'a')
-        c = cls(f)
+        c = cls(f, return_datetimes=return_datetimes)
         c._time_reference = parser.parse(c.meta_data['time']['origin'])
         return c
 

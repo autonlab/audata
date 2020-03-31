@@ -60,6 +60,10 @@ class AUDataset(AUElement):
     def __new_from_array(cls, au_parent, name, arr,
         time_cols=set(), timedelta_cols=set()):
 
+        # ATW: TODO: Less lame.
+        if arr.dtype.names is None:
+            return cls.__new_from_dataframe(au_parent, name, pd.DataFrame(data=arr))
+
         meta, strings, recs = utils.audata_from_arr(arr, time_cols, timedelta_cols)
         au_parent._h5.create_dataset(
             name, chunks=True, maxshape=(None,),
@@ -91,13 +95,20 @@ class AUDataset(AUElement):
         return d
 
     def __getitem__(self, idx=slice(-1)):
+        return self.get(idx)
+
+    def get(self, idx=slice(-1), raw=False, datetimes=None):
         rec = self._h5[idx]
+        if raw: return rec
         if isinstance(rec, np.void):
             rec = np.array([rec], dtype=rec.dtype)
         meta = self.meta
         string_name = f'.meta/strings/{self.name}'
         string_ref = self._h5.file[string_name] if string_name in self._h5.file else None
-        df = utils.df_from_audata(rec, meta, self.file.time_reference, string_ref, idx)
+
+        if datetimes is None:
+            datetimes = self.file.return_datetimes
+        df = utils.df_from_audata(rec, meta, self.file.time_reference, string_ref, idx, datetimes)
         return df
 
     def append(self, arr, direct=False):

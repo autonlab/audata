@@ -8,7 +8,7 @@ import json
 from numpy.lib.recfunctions import drop_fields
 
 
-def df_from_audata(rec, meta, time_ref=None, string_ref=None, idx=slice(-1)):
+def df_from_audata(rec, meta, time_ref=None, string_ref=None, idx=slice(-1), datetimes=True):
     df = pd.DataFrame(data=rec)
     for col in meta['columns']:
         m = meta['columns'][col]
@@ -21,7 +21,10 @@ def df_from_audata(rec, meta, time_ref=None, string_ref=None, idx=slice(-1)):
         elif m['type'] == 'time':
             if time_ref is None:
                 raise Exception('Cannot read timestamps without reference!')
-            df[col] = time_ref + df[col].values * dt.timedelta(seconds=1)
+            if datetimes:
+                df[col] = time_ref + df[col].values * dt.timedelta(seconds=1)
+            else:
+                df[col] += time_ref.timestamp()
         elif m['type'] == 'timedelta':
             df[col] = df[col].values * dt.timedelta(seconds=1)
     return df
