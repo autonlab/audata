@@ -133,10 +133,14 @@ class AUDataset(AUElement):
 
     def __repr__(self):
         def trunc(s, N=20):
-            if len(s) > N:
-                return s[:(N-3)] + '...'
+            if isinstance(s, str):
+                if len(s) > N:
+                    return s[:(N-3)] + '...'
+                else:
+                    return s
             else:
-                return s
+                return f'{s}'
+
         lines = []
         ncol = self.ncol
         nrow = self.nrow
