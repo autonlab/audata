@@ -52,14 +52,14 @@ class AUFile(AUGroup):
 
     @classmethod
     def new(cls, filename, overwrite=False, time_reference='now',
-            title=None, author=None, organization=None):
+            title=None, author=None, organization=None, **kwargs):
         if os.path.exists(filename) and not overwrite:
             raise Exception('File "{}" already exists!'.format(filename))
 
         if time_reference == 'now':
             time_reference = dt.datetime.now(tz=tzlocal.get_localzone())
 
-        f = h5.File(filename, 'w')
+        f = h5.File(filename, 'w', **kwargs)
         f.create_group('.meta')
         f['.meta'].attrs['audata'] = dict2json({
             'version': [int(x) for x in __VERSION_LIST__],

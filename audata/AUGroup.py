@@ -83,7 +83,7 @@ class AUGroup(AUElement):
         else:
             return None
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key, value, overwrite=True, **kwargs):
         if self._h5 is None:
             raise Exception('No group opened.')
 
@@ -92,4 +92,10 @@ class AUGroup(AUElement):
                 del self._h5[key]
         else:
             from .AUDataset import AUDataset
-            AUDataset.new(self, key, value, overwrite=True)
+            AUDataset.new(self, key, value, overwrite=overwrite, **kwargs)
+
+    def __contains__(self, key):
+        return self._h5.__contains__(key)
+
+    def new_dataset(self, name, value, **kwargs):
+        self.__setitem__(name, value, **kwargs)

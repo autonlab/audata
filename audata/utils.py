@@ -1,8 +1,11 @@
 import pandas as pd
 import numpy as np
 import h5py as h5
+import datetime as dt
 import jsbeautifier as jsb
 import json
+
+from numpy.lib.recfunctions import drop_fields
 
 
 def df_from_audata(rec, meta, time_ref=None, string_ref=None, idx=slice(-1)):
@@ -18,9 +21,9 @@ def df_from_audata(rec, meta, time_ref=None, string_ref=None, idx=slice(-1)):
         elif m['type'] == 'time':
             if time_ref is None:
                 raise Exception('Cannot read timestamps without reference!')
-            df[col] = np.datetime64(time_ref) + df[col].values * 10**9 * np.timedelta64(1, 'ns')
+            df[col] = time_ref + df[col].values * dt.timedelta(seconds=1)
         elif m['type'] == 'timedelta':
-            df[col] = df[col].values * 10**9 * np.timedelta64(1, 'ns')
+            df[col] = df[col].values * dt.timedelta(seconds=1)
     return df
 
 def audata_from_df(df, time_ref=None):
@@ -64,6 +67,46 @@ def audata_from_df(df, time_ref=None):
     meta = {'columns': columns}
     rec = df.to_records(index=False)
     return meta, strings, rec
+
+def audata_from_arr(arr, time_cols=set(), timedelta_cols=set()):
+    cols = arr.dtype.names
+    cols_to_drop = []
+    columns = {}
+    strings = {}
+    for col in cols:
+        m = {}
+        d = arr.dtype[col]
+
+        if col in time_cols:
+            # Assume time columns are already in seconds relative to the time reference.
+            m['type'] = 'time'
+            if d.kind != 'f':
+                arr[col] = arr[col].astype('f8')
+        elif col in timedelta_cols:
+            # Assume time delta columns are already in seconds.
+            m['type'] = 'timedelta'
+            if d.kind != 'f':
+                arr[col] = arr[col].astype('f8')
+        elif d == h5.string_dtype():
+            strings[col] = arr[col]
+            cols_to_drop.append(col)
+            m['type'] = 'string'
+        elif d.kind in ['i', 'u']:
+            m['type'] = 'integer'
+            m['signed'] = d.kind == 'i'
+        else:
+            typenames = {
+                'b': 'boolean',
+                'f': 'real',
+                'c': 'complex'
+            }
+            m['type'] = typenames[d.kind]
+        columns[col] = m
+
+    meta = {'columns': columns}
+    if len(cols_to_drop) > 0:
+        arr = drop_fields(arr, cols_to_drop)
+    return meta, strings, arr
 
 def json2dict(json_str):
     if not isinstance(json_str, str):

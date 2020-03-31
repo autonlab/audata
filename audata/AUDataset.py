@@ -20,8 +20,16 @@ class AUDataset(AUElement):
 
         super().__init__(au_parent, name)
 
+        # Determine if this dataset supports direct appends.
+        self.__supports_direct_appends = True
+        meta = self.meta
+        for col in meta['columns']:
+            if meta['columns'][col]['type'] == 'string':
+                self.__supports_direct_appends = False
+                break
+
     @classmethod
-    def new(cls, au_parent, name, value, overwrite=False):
+    def new(cls, au_parent, name, value, overwrite=False, **kwargs):
         if not isinstance(au_parent, AUElement):
             raise Exception('Must send AUElement.')
 
@@ -37,16 +45,34 @@ class AUDataset(AUElement):
         if isinstance(value, (h5.Dataset, AUDataset)):
             value = value[:]
 
-        # ATW: TODO: This should be less hacky than converting to a Pandas DataFrame
-        # only to be converted back to a recarray later...
-        if isinstance(value, (np.ndarray, np.recarray)):
-            value = pd.DataFrame(data=value)
+        # Try to create a class now.
 
-        if isinstance(value, pd.DataFrame):
+        if isinstance(value, (np.ndarray, np.recarray)):
+            return cls.__new_from_array(au_parent, name, value, **kwargs)
+
+        elif isinstance(value, pd.DataFrame):
             return cls.__new_from_dataframe(au_parent, name, value)
 
         else:
             raise Exception(f'Unsure how to convert type {type(value)}')
+
+    @classmethod
+    def __new_from_array(cls, au_parent, name, arr,
+        time_cols=set(), timedelta_cols=set()):
+
+        meta, strings, recs = utils.audata_from_arr(arr, time_cols, timedelta_cols)
+        au_parent._h5.create_dataset(
+            name, chunks=True, maxshape=(None,),
+            compression='gzip', shuffle=True, fletcher32=True, data=recs)
+        au_parent._h5[name].attrs['.meta'] = utils.dict2json(meta)
+        if len(strings) > 0:
+            for strcol in strings:
+                au_parent._h5.file.create_dataset(
+                    f'.meta/strings/{name}/{strcol}', chunks=True, maxshape=(None,),
+                    compression='gzip', shuffle=True, fletcher32=True,
+                    dtype=h5.string_dtype(), data=strings[strcol])
+        d = cls(au_parent, name)
+        return d
 
     @classmethod
     def __new_from_dataframe(cls, au_parent, name, df):
@@ -73,6 +99,21 @@ class AUDataset(AUElement):
         string_ref = self._h5.file[string_name] if string_name in self._h5.file else None
         df = utils.df_from_audata(rec, meta, self.file.time_reference, string_ref, idx)
         return df
+
+    def append(self, arr, direct=False):
+        if direct and not self.supports_direct_appends:
+            raise Exception('This dataset does not support direct appends.')
+        elif not direct:
+            # ATW: TODO:
+            raise Exception('Not implemented yet.')
+
+        N_data = len(arr)
+        self._h5.resize((self.nrow + N_data,))
+        self._h5[-N_data:] = arr
+
+    @property
+    def supports_direct_appends(self):
+        return self.__supports_direct_appends
 
     @property
     def ncol(self):
