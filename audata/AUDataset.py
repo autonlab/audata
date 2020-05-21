@@ -20,14 +20,6 @@ class AUDataset(AUElement):
 
         super().__init__(au_parent, name)
 
-        # Determine if this dataset supports direct appends.
-        self.__supports_direct_appends = True
-        meta = self.meta
-        for col in meta['columns']:
-            if meta['columns'][col]['type'] == 'string':
-                self.__supports_direct_appends = False
-                break
-
     @classmethod
     def new(cls, au_parent, name, value, overwrite=False, **kwargs):
         if not isinstance(au_parent, AUElement):
@@ -64,33 +56,21 @@ class AUDataset(AUElement):
         if arr.dtype.names is None:
             return cls.__new_from_dataframe(au_parent, name, pd.DataFrame(data=arr))
 
-        meta, strings, recs = utils.audata_from_arr(arr, time_cols, timedelta_cols)
+        meta, recs = utils.audata_from_arr(arr, time_cols, timedelta_cols)
         au_parent._h5.create_dataset(
             name, chunks=True, maxshape=(None,),
             compression='gzip', shuffle=True, fletcher32=True, data=recs)
         au_parent._h5[name].attrs['.meta'] = utils.dict2json(meta)
-        if len(strings) > 0:
-            for strcol in strings:
-                au_parent._h5.file.create_dataset(
-                    f'.meta/strings/{name}/{strcol}', chunks=True, maxshape=(None,),
-                    compression='gzip', shuffle=True, fletcher32=True,
-                    dtype=h5.string_dtype(), data=strings[strcol])
         d = cls(au_parent, name)
         return d
 
     @classmethod
     def __new_from_dataframe(cls, au_parent, name, df):
-        meta, strings, recs = utils.audata_from_df(df, time_ref=au_parent.file.time_reference)
+        meta, recs = utils.audata_from_df(df, time_ref=au_parent.file.time_reference)
         au_parent._h5.create_dataset(
             name, chunks=True, maxshape=(None,),
             compression='gzip', shuffle=True, fletcher32=True, data=recs)
         au_parent._h5[name].attrs['.meta'] = utils.dict2json(meta)
-        if len(strings) > 0:
-            for strcol in strings:
-                au_parent._h5.file.create_dataset(
-                    f'.meta/strings/{name}/{strcol}', chunks=True, maxshape=(None,),
-                    compression='gzip', shuffle=True, fletcher32=True,
-                    dtype=h5.string_dtype(), data=strings[strcol])
         d = cls(au_parent, name)
         return d
 
@@ -103,28 +83,27 @@ class AUDataset(AUElement):
         if isinstance(rec, np.void):
             rec = np.array([rec], dtype=rec.dtype)
         meta = self.meta
-        string_name = f'.meta/strings/{self.name}'
-        string_ref = self._h5.file[string_name] if string_name in self._h5.file else None
 
         if datetimes is None:
             datetimes = self.file.return_datetimes
-        df = utils.df_from_audata(rec, meta, self.file.time_reference, string_ref, idx, datetimes)
+        df = utils.df_from_audata(rec, meta, self.file.time_reference, idx, datetimes)
         return df
 
-    def append(self, arr, direct=False):
-        if direct and not self.supports_direct_appends:
-            raise Exception('This dataset does not support direct appends.')
-        elif not direct:
-            # ATW: TODO:
-            raise Exception('Not implemented yet.')
+    def append(self, data, direct=False):
+        arr = None
+        if isinstance(data, np.recarray):
+            arr = data
+            if not direct:
+                _, arr = utils.audata_from_arr(arr, time_ref=self.time_reference)
+        elif direct:
+            raise ValueError(f'Data must be in a recarray already to use direct append! Instead {type(data)} was sent.')
+        elif isinstance(data, pd.DataFrame):
+            # TODO: This does not validate categorical levels. So keep them the same!
+            _, arr = utils.audata_from_df(data, time_ref=self.time_reference)
 
         N_data = len(arr)
         self._h5.resize((self.nrow + N_data,))
         self._h5[-N_data:] = arr
-
-    @property
-    def supports_direct_appends(self):
-        return self.__supports_direct_appends
 
     @property
     def ncol(self):

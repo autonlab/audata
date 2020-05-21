@@ -13,9 +13,9 @@ f = AUFile.new('test.h5', overwrite=True)
 # Writing a matrix.
 f['mymat'] = np.ones([100, 300])
 
-# Writing a data frame.
+# Writing and appending a data frame.
 N = 1000
-f['test/mydf'] = pd.DataFrame(
+df = pd.DataFrame(
     data={
         'time': [f.time_reference + dt.timedelta(seconds=x/250.0) for x in range(N)],
         'time2': [f.time_reference + dt.timedelta(seconds=x/250.0 + 0.5) for x in range(N)],
@@ -25,6 +25,8 @@ f['test/mydf'] = pd.DataFrame(
         'factor': pd.Series([['Cat', 'Dog', 'Liger'][x % 3] for x in range(N)], dtype='category')
     }
 )
+f['test/mydf'] = df
+f['test/mydf'].append(df)
 
 # Annotations - Not yet.
 # f['mydf'].add_range('time', 'time2')
@@ -33,7 +35,6 @@ f['test/mydf'] = pd.DataFrame(
 print(f)
 print(f['.meta'])
 print(f.time_reference)
-print(f._h5['.meta/strings/test/mydf/strings'])
 print(f['test/mydf'])
 print(f['test']['mydf'][:])
 
@@ -46,7 +47,6 @@ with AUFile.open('test.h5') as f:
     print(f)
     print(f['.meta'])
     print(f.time_reference)
-    print(f._h5['.meta/strings/test/mydf/strings'])
     print(f['test']['mydf'])
     print(f['test/mydf'][:])
     print(f['test/mydf'][-3:])

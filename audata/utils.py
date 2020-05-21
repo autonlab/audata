@@ -8,15 +8,11 @@ import json
 from numpy.lib.recfunctions import drop_fields
 
 
-def df_from_audata(rec, meta, time_ref=None, string_ref=None, idx=slice(-1), datetimes=True):
+def df_from_audata(rec, meta, time_ref=None, idx=slice(-1), datetimes=True):
     df = pd.DataFrame(data=rec)
     for col in meta['columns']:
         m = meta['columns'][col]
-        if m['type'] == 'string':
-            if string_ref is None:
-                raise Exception('Cannot read strings without reference!')
-            df[col] = string_ref[col][idx]
-        elif m['type'] == 'factor':
+        if m['type'] == 'factor':
             df[col] = pd.Categorical.from_codes(df[col].values, m['levels'])
         elif m['type'] == 'time':
             if time_ref is None:
@@ -32,14 +28,16 @@ def df_from_audata(rec, meta, time_ref=None, string_ref=None, idx=slice(-1), dat
 def audata_from_df(df, time_ref=None):
     cols = list(df)
     columns = {}
-    strings = {}
+    dtype_map = {}
     for col in cols:
         m = {}
         d = df[col].dtype
 
         if d == h5.string_dtype():
-            strings[col] = df[col].values
-            del df[col]
+            # String d-type has to be set explicitely or HDF5 won't accept it. Default to
+            # variable-length strings, although in the future we might want to support fixed-
+            # length strings which can be compressed (vlen strings are NOT compressed).
+            dtype_map[col] = h5.string_dtype()
             m['type'] = 'string'
         elif d.name == 'category':
             m['type'] = 'factor'
@@ -68,31 +66,31 @@ def audata_from_df(df, time_ref=None):
         columns[col] = m
 
     meta = {'columns': columns}
-    rec = df.to_records(index=False)
-    return meta, strings, rec
+    rec = df.to_records(index=False, column_dtypes=dtype_map)
+    return meta, rec
 
-def audata_from_arr(arr, time_cols=set(), timedelta_cols=set()):
+def audata_from_arr(arr, time_ref=None):
+    # TODO: Factor types are not supported in this mode. Also not supported: non-string objects.
     cols = arr.dtype.names
-    cols_to_drop = []
     columns = {}
-    strings = {}
     for col in cols:
         m = {}
         d = arr.dtype[col]
 
-        if col in time_cols:
-            # Assume time columns are already in seconds relative to the time reference.
+        if d.kind == 'M':
+            if time_ref is None:
+                raise(Exception('Cannot convert timestamps without time reference!'))
+
+            # Note: Since numpy datetime64 types are note timezone aware, we must assume the datetimes
+            # use the same timezone.
             m['type'] = 'time'
-            if d.kind != 'f':
-                arr[col] = arr[col].astype('f8')
-        elif col in timedelta_cols:
-            # Assume time delta columns are already in seconds.
+            arr[col] = (arr[col] - np.datetime64(time_ref.replace(tzinfo=None))) / np.timedelta64(1, 's')
+        elif d.kind == 'm':
             m['type'] = 'timedelta'
-            if d.kind != 'f':
-                arr[col] = arr[col].astype('f8')
+            arr[col] = arr[col] / np.timedelta64(1, 's')
         elif d == h5.string_dtype():
-            strings[col] = arr[col]
-            cols_to_drop.append(col)
+            if h5.check_vlen_dtype(d) != str:
+                arr[col] = arr[col].astype(h5.string_dtype())
             m['type'] = 'string'
         elif d.kind in ['i', 'u']:
             m['type'] = 'integer'
@@ -107,9 +105,7 @@ def audata_from_arr(arr, time_cols=set(), timedelta_cols=set()):
         columns[col] = m
 
     meta = {'columns': columns}
-    if len(cols_to_drop) > 0:
-        arr = drop_fields(arr, cols_to_drop)
-    return meta, strings, arr
+    return meta, arr
 
 def json2dict(json_str):
     if not isinstance(json_str, str):
