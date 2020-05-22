@@ -49,14 +49,14 @@ class AUDataset(AUElement):
             raise Exception(f'Unsure how to convert type {type(value)}')
 
     @classmethod
-    def __new_from_array(cls, au_parent, name, arr,
-        time_cols=set(), timedelta_cols=set()):
+    def __new_from_array(cls, au_parent, name, arr, time_cols={}, timedelta_cols={}):
 
         # ATW: TODO: Less lame.
         if arr.dtype.names is None:
             return cls.__new_from_dataframe(au_parent, name, pd.DataFrame(data=arr))
 
-        meta, recs = utils.audata_from_arr(arr, time_cols, timedelta_cols)
+        meta, recs = utils.audata_from_arr(arr, time_ref=au_parent.file.time_reference,
+            time_cols=time_cols, timedelta_cols=timedelta_cols)
         au_parent._h5.create_dataset(
             name, chunks=True, maxshape=(None,),
             compression='gzip', shuffle=True, fletcher32=True, data=recs)
@@ -65,8 +65,10 @@ class AUDataset(AUElement):
         return d
 
     @classmethod
-    def __new_from_dataframe(cls, au_parent, name, df):
-        meta, recs = utils.audata_from_df(df, time_ref=au_parent.file.time_reference)
+    def __new_from_dataframe(cls, au_parent, name, df, time_cols={}, timedelta_cols={}):
+
+        meta, recs = utils.audata_from_df(df, time_ref=au_parent.file.time_reference,
+            time_cols=time_cols, timedelta_cols=timedelta_cols)
         au_parent._h5.create_dataset(
             name, chunks=True, maxshape=(None,),
             compression='gzip', shuffle=True, fletcher32=True, data=recs)
@@ -89,17 +91,19 @@ class AUDataset(AUElement):
         df = utils.df_from_audata(rec, meta, self.file.time_reference, idx, datetimes)
         return df
 
-    def append(self, data, direct=False):
+    def append(self, data, direct=False, time_cols={}, timedelta_cols={}):
         arr = None
         if isinstance(data, np.recarray):
             arr = data
             if not direct:
-                _, arr = utils.audata_from_arr(arr, time_ref=self.time_reference)
+                _, arr = utils.audata_from_arr(arr, time_ref=self.time_reference,
+                    time_cols=time_cols, timedelta_cols=timedelta_cols)
         elif direct:
             raise ValueError(f'Data must be in a recarray already to use direct append! Instead {type(data)} was sent.')
         elif isinstance(data, pd.DataFrame):
             # TODO: This does not validate categorical levels. So keep them the same!
-            _, arr = utils.audata_from_df(data, time_ref=self.time_reference)
+            _, arr = utils.audata_from_df(data, time_ref=self.time_reference,
+                time_cols=time_cols, timedelta_cols=timedelta_cols)
 
         N_data = len(arr)
         self._h5.resize((self.nrow + N_data,))

@@ -25,7 +25,7 @@ def df_from_audata(rec, meta, time_ref=None, idx=slice(-1), datetimes=True):
             df[col] = df[col].values * dt.timedelta(seconds=1)
     return df
 
-def audata_from_df(df, time_ref=None):
+def audata_from_df(df, time_ref=None, time_cols={}, timedelta_cols={}):
     cols = list(df)
     columns = {}
     dtype_map = {}
@@ -56,6 +56,14 @@ def audata_from_df(df, time_ref=None):
         elif d.kind == 'm':
             m['type'] = 'timedelta'
             df[col] = df[col].dt.total_seconds()
+        elif col in time_cols:
+            # Assume offset from reference in appropriate units.
+            m['type'] = 'time'
+            dtype_map[col] = 'f8'
+        elif col in timedelta_cols:
+            # Assume delta in appropriate units.
+            m['type'] = 'timedelta'
+            dtype_map[col] = 'f8'
         else:
             typenames = {
                 'b': 'boolean',
@@ -69,7 +77,7 @@ def audata_from_df(df, time_ref=None):
     rec = df.to_records(index=False, column_dtypes=dtype_map)
     return meta, rec
 
-def audata_from_arr(arr, time_ref=None):
+def audata_from_arr(arr, time_ref=None, time_cols={}, timedelta_cols={}):
     # TODO: Factor types are not supported in this mode. Also not supported: non-string objects.
     cols = arr.dtype.names
     columns = {}
@@ -92,6 +100,16 @@ def audata_from_arr(arr, time_ref=None):
             if h5.check_vlen_dtype(d) != str:
                 arr[col] = arr[col].astype(h5.string_dtype())
             m['type'] = 'string'
+        elif col in time_cols:
+            # Assume offset from reference in appropriate units.
+            m['type'] = 'time'
+            if d.type != 'f':
+                arr[col] = arr[col].astype('f8')
+        elif col in timedelta_cols:
+            # Assume delta in appropriate units.
+            m['type'] = 'timedelta'
+            if d.type != 'f':
+                arr[col] = arr[col].astype('f8')
         elif d.kind in ['i', 'u']:
             m['type'] = 'integer'
             m['signed'] = d.kind == 'i'
