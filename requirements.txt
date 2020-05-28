@@ -2,4 +2,6 @@ tzlocal
 h5py
 pandas
 numpy
+jsbeautifier
 lorem
+
