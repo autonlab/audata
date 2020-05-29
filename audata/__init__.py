@@ -13,4 +13,4 @@ __VERSION__ = '{}.{}.{}b{}'.format(*__VERSION_LIST__)
 
 __DATA_VERSION__ = 1
 
-from .AUFile import AUFile
+from audata.file import AUFile

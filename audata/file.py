@@ -6,9 +6,9 @@ import tzlocal
 import pandas as pd
 import numpy as np
 
-from . import __VERSION_LIST__, __DATA_VERSION__
-from .utils import json2dict, dict2json
-from .AUGroup import AUGroup
+from audata import __VERSION_LIST__, __DATA_VERSION__
+from audata.utils import json2dict, dict2json
+from audata.group import AUGroup
 
 class AUFile(AUGroup):
     DateTimeFormat = '%Y-%m-%d %H:%M:%S.%f %Z'

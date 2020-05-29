@@ -1,6 +1,6 @@
 import h5py as h5
 
-from .AUElement import AUElement
+from audata.element import AUElement
 
 
 class AUGroup(AUElement):
@@ -74,7 +74,7 @@ class AUGroup(AUElement):
 
         if key in self._h5:
             if isinstance(self._h5[key], h5.Dataset):
-                from .AUDataset import AUDataset
+                from audata.dataset import AUDataset
                 return AUDataset(self, key)
             elif isinstance(self._h5[key], h5.Group):
                 return AUGroup(self, key)
@@ -91,7 +91,7 @@ class AUGroup(AUElement):
             if key in self._h5:
                 del self._h5[key]
         else:
-            from .AUDataset import AUDataset
+            from audata.dataset import AUDataset
             AUDataset.new(self, key, value, overwrite=overwrite, **kwargs)
 
     def __contains__(self, key):

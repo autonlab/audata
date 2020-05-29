@@ -1,5 +1,5 @@
 import h5py as h5
-from .utils import json2dict, dict2json
+from audata.utils import json2dict, dict2json
 
 
 class AUElement:

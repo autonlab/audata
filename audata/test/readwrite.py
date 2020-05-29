@@ -5,7 +5,7 @@ import datetime as dt
 from dateutil import parser
 import lorem
 
-from .. import AUFile
+from audata import AUFile
 
 if __name__ == '__main__':
     f = AUFile.new('test.h5', overwrite=True)
@@ -51,3 +51,4 @@ if __name__ == '__main__':
         print(f['test/mydf'][:])
         print(f['test/mydf'][-3:])
         print(f['test/mydf'][-3])
+        print(list(f.recurse()))

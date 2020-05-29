@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import h5py as h5
 
-from . import utils
-from .AUElement import AUElement
+from audata import utils
+from audata.element import AUElement
 
 
 class AUDataset(AUElement):
