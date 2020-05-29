@@ -1,14 +1,14 @@
 import h5py as h5
 
-from audata.element import AUElement
+from audata.element import Element
 
 
-class AUGroup(AUElement):
+class Group(Element):
     def __init__(self, au_parent, name=''):
-        if not isinstance(au_parent, (AUElement, h5.File)):
+        if not isinstance(au_parent, (Element, h5.File)):
             raise Exception(f'Invalid parent: {type(au_parent)}')
 
-        if isinstance(au_parent, AUElement):
+        if isinstance(au_parent, Element):
             parent = au_parent._h5
             if not isinstance(parent, h5.Group):
                 raise Exception(f'Invalid parent: {type(parent)}')
@@ -40,7 +40,7 @@ class AUGroup(AUElement):
         names = [n for n in list(self._h5) if not n.startswith('.')]
         for name in names:
             elem = self.__getitem__(name)
-            if isinstance(elem, AUGroup):
+            if isinstance(elem, Group):
                 for stuple in elem.recurse():
                     yield stuple
             else:
@@ -70,14 +70,14 @@ class AUGroup(AUElement):
             raise Exception('No group opened.')
 
         if key == '':
-            return AUGroup(self, key)
+            return Group(self, key)
 
         if key in self._h5:
             if isinstance(self._h5[key], h5.Dataset):
-                from audata.dataset import AUDataset
-                return AUDataset(self, key)
+                from audata.dataset import Dataset
+                return Dataset(self, key)
             elif isinstance(self._h5[key], h5.Group):
-                return AUGroup(self, key)
+                return Group(self, key)
             else:
                 raise Exception('Unsure how to handle class: {}'.format(type(self._h5[key])))
         else:
@@ -91,8 +91,8 @@ class AUGroup(AUElement):
             if key in self._h5:
                 del self._h5[key]
         else:
-            from audata.dataset import AUDataset
-            AUDataset.new(self, key, value, overwrite=overwrite, **kwargs)
+            from audata.dataset import Dataset
+            Dataset.new(self, key, value, overwrite=overwrite, **kwargs)
 
     def __contains__(self, key):
         return self._h5.__contains__(key)

@@ -8,9 +8,9 @@ import numpy as np
 
 from audata import __VERSION_LIST__, __DATA_VERSION__
 from audata.utils import json2dict, dict2json
-from audata.group import AUGroup
+from audata.group import Group
 
-class AUFile(AUGroup):
+class File(Group):
     DateTimeFormat = '%Y-%m-%d %H:%M:%S.%f %Z'
 
     def __init__(self, file, time_reference=None, return_datetimes=True):
@@ -32,7 +32,7 @@ class AUFile(AUGroup):
     @time_reference.setter
     def time_reference(self, new_ref):
         if not self.valid:
-            raise Exception('Attempting to use uninitialized AUFile!')
+            raise Exception('Attempting to use uninitialized File!')
 
         # If it's a date/time string, that's fine, but try to parse it first to make sure
         # the format is always consistent.
@@ -45,7 +45,7 @@ class AUFile(AUGroup):
             if new_ref.tzinfo is None:
                 new_ref = tzlocal.get_localzone().localize(new_ref)
             self._time_reference = new_ref
-            new_ref_str = new_ref.strftime(AUFile.DateTimeFormat)
+            new_ref_str = new_ref.strftime(File.DateTimeFormat)
 
             data = self.meta_data
             data['time']['origin'] = new_ref_str
@@ -71,7 +71,7 @@ class AUFile(AUGroup):
             'author': author,
             'organization': organization,
             'time': {
-                'origin': time_reference.strftime(AUFile.DateTimeFormat),
+                'origin': time_reference.strftime(File.DateTimeFormat),
                 'units': 'seconds'
             }
         })

@@ -3,12 +3,12 @@ import pandas as pd
 import h5py as h5
 
 from audata import utils
-from audata.element import AUElement
+from audata.element import Element
 
 
-class AUDataset(AUElement):
+class Dataset(Element):
     def __init__(self, au_parent, name):
-        if not isinstance(au_parent, AUElement):
+        if not isinstance(au_parent, Element):
             raise Exception(f'Invalid parent: {type(au_parent)}')
 
         parent = au_parent._h5
@@ -22,8 +22,8 @@ class AUDataset(AUElement):
 
     @classmethod
     def new(cls, au_parent, name, value, overwrite=False, **kwargs):
-        if not isinstance(au_parent, AUElement):
-            raise Exception('Must send AUElement.')
+        if not isinstance(au_parent, Element):
+            raise Exception('Must send Element.')
 
         parent = au_parent._h5
         if not isinstance(parent, h5.Group):
@@ -32,9 +32,9 @@ class AUDataset(AUElement):
         if name in parent and not overwrite:
             raise Exception(f'{name} already exists.')
 
-        # If given an HDF5 dataset or an AUDataset, read in all of its data
-        # (HDF5 dataset as a numpy ndarray, AUDataset as a pandas DataFrame).
-        if isinstance(value, (h5.Dataset, AUDataset)):
+        # If given an HDF5 dataset or an Dataset, read in all of its data
+        # (HDF5 dataset as a numpy ndarray, Dataset as a pandas DataFrame).
+        if isinstance(value, (h5.Dataset, Dataset)):
             value = value[:]
 
         # Try to create a class now.

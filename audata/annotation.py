@@ -2,7 +2,7 @@ import pandas as pd
 import h5py as h5
 
 
-class AUAnnotation:
+class Annotation:
     def __init__(self, root):
         if not isinstance(root, h5.HLObject):
             raise Exception('Invalid  HDF5 high-level object.')

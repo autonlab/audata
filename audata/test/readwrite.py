@@ -5,10 +5,10 @@ import datetime as dt
 from dateutil import parser
 import lorem
 
-from audata import AUFile
+from audata import File
 
 if __name__ == '__main__':
-    f = AUFile.new('test.h5', overwrite=True)
+    f = File.new('test.h5', overwrite=True)
 
     # Writing a matrix.
     f['mymat'] = np.ones([100, 300])
@@ -42,7 +42,7 @@ if __name__ == '__main__':
 
     # Open the created file and do the same thing.
     print('Testing openeing file we just created:')
-    with AUFile.open('test.h5') as f:
+    with File.open('test.h5') as f:
         # Read some data.
         print(f)
         print(f['.meta'])

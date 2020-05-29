@@ -2,7 +2,7 @@ import h5py as h5
 from audata.utils import json2dict, dict2json
 
 
-class AUElement:
+class Element:
     def __init__(self, parent=None, name=''):
         if parent is None:
             self.parent = None
@@ -12,7 +12,7 @@ class AUElement:
             self.parent = self
             self.file = self
             self._h5 = parent
-        elif isinstance(parent, AUElement):
+        elif isinstance(parent, Element):
             self.parent = parent
             self.file = parent.file
             self._h5 = parent._h5 if name == '' else parent._h5[name]

@@ -78,7 +78,7 @@ def main():
 
     fn = mkfn(args.path)
     print('Creating {}'.format(fn))
-    with audata.AUFile.new(fn, overwrite=True) as f:
+    with audata.File.new(fn, overwrite=True) as f:
         walk(f, args.path)
         print(f)
 
