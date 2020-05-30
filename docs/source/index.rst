@@ -10,7 +10,7 @@ Auton Lab Universal Data (`audata`) Documentation
    :maxdepth: 2
    :caption: Contents:
 
-   modules
+   _api/modules
 
 
 

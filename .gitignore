@@ -2,7 +2,7 @@
 dist/
 build/
 docs/build/
-docs/source/
+docs/source/_api/
 *.egg-info/
 *.pyc
 *.h5
