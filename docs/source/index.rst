@@ -6,9 +6,24 @@
 Auton Lab Universal Data (`audata`) Documentation
 =================================================
 
+This is documentation for the `audata` package, a generic data storage schema built on
+top of HDF5. The code can be found on Github_.
+
+.. _Github: https://github.com/autonlab/audata
+
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+
+   overview
+   tutorial
+   spec
+
+API Reference
+=============
+
+.. toctree::
+   :maxdepth: 3
+   :caption: API Reference:
 
    _api/modules
 

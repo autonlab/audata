@@ -48,7 +48,8 @@ class Group(Element):
 
     def recurse(self) -> Iterable[Tuple[Element, str]]:
         """
-        Recursively find all datasets.
+        Recursively find all datasets. Groups and datasets prefixed with a period
+        are ignored.
 
         Returns:
             Iterable (generator) of tuples of (object: Element, name: str).
