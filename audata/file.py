@@ -8,7 +8,7 @@ import numpy as np
 
 from typing import Optional, Union, Literal
 
-from audata import __VERSION_LIST__, __DATA_VERSION__
+from audata import __VERSION__, __DATA_VERSION__
 from audata._utils import json2dict, dict2json
 from audata.group import Group
 
@@ -147,7 +147,7 @@ class File(Group):
         f = h5.File(filename, 'w', **kwargs)
         f.create_group('.meta')
         f['.meta'].attrs['audata'] = dict2json({
-            'version': [int(x) for x in __VERSION_LIST__],
+            'version': __VERSION__,
             'data_version': __DATA_VERSION__
         })
         f['.meta'].attrs['data'] = dict2json({

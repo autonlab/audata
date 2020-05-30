@@ -4,6 +4,12 @@ Auton Universal Data (audata) Library
 
 [Documentation](https://audata.readthedocs.io/en/latest/)
 
+## Installation
+
+```
+pip install audata
+```
+
 ## Bulding
 
 ```

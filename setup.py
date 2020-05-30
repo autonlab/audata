@@ -32,6 +32,7 @@ setup(
         'tzlocal',
         'h5py'
     ],
+    python_requires='>=3.8',
     include_dirs=[np.get_include()],
     packages=find_packages()
 )
