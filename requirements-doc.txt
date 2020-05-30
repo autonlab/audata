@@ -1,2 +1,8 @@
-sphinx
+sphinx>=3
 sphinx-rtd-theme
+tzlocal
+h5py
+pandas
+numpy
+jsbeautifier
+lorem
