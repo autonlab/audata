@@ -1,6 +1,8 @@
 .vscode/
 dist/
 build/
+docs/build/
+docs/source/
 *.egg-info/
 *.pyc
 *.h5

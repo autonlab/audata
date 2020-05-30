@@ -2,12 +2,20 @@ import numpy as np
 import pandas as pd
 import h5py as h5
 
-from audata import utils
+from typing import Union, AbstractSet, Optional, Tuple, Any, Dict
+
+from audata import _utils as utils
 from audata.element import Element
 
 
 class Dataset(Element):
-    def __init__(self, au_parent, name):
+    """
+    Maps to an HDF5 dataset, maintaining the `audata` schema and facilitating translation of
+    higher-level data types. Generally should not be instantiated directly.
+    """
+    def __init__(self,
+            au_parent : Element,
+            name : str):
         if not isinstance(au_parent, Element):
             raise Exception(f'Invalid parent: {type(au_parent)}')
 
@@ -21,7 +29,13 @@ class Dataset(Element):
         super().__init__(au_parent, name)
 
     @classmethod
-    def new(cls, au_parent, name, value, overwrite=False, **kwargs):
+    def new(cls,
+            au_parent : Element,
+            name : str,
+            value : Union[h5.Dataset, np.ndarray, np.recarray, pd.DataFrame],
+            overwrite : bool = False,
+            **kwargs) -> 'Dataset':
+
         if not isinstance(au_parent, Element):
             raise Exception('Must send Element.')
 
@@ -49,7 +63,12 @@ class Dataset(Element):
             raise Exception(f'Unsure how to convert type {type(value)}')
 
     @classmethod
-    def __new_from_array(cls, au_parent, name, arr, time_cols={}, timedelta_cols={}):
+    def __new_from_array(cls,
+            au_parent : Element,
+            name : str,
+            arr : Union[np.ndarray, np.recarray],
+            time_cols : AbstractSet[str] = {},
+            timedelta_cols : AbstractSet[str] = {}) -> 'Dataset':
 
         # ATW: TODO: Less lame.
         if arr.dtype.names is None:
@@ -65,7 +84,12 @@ class Dataset(Element):
         return d
 
     @classmethod
-    def __new_from_dataframe(cls, au_parent, name, df, time_cols={}, timedelta_cols={}):
+    def __new_from_dataframe(cls,
+            au_parent : Element,
+            name : str,
+            df : pd.DataFrame,
+            time_cols : AbstractSet[str] = {},
+            timedelta_cols : AbstractSet[str] = {}) -> 'Dataset':
 
         meta, recs = utils.audata_from_df(df, time_ref=au_parent.file.time_reference,
             time_cols=time_cols, timedelta_cols=timedelta_cols)
@@ -76,10 +100,14 @@ class Dataset(Element):
         d = cls(au_parent, name)
         return d
 
-    def __getitem__(self, idx=slice(-1)):
+    def __getitem__(self, idx = slice(-1)) -> pd.DataFrame:
         return self.get(idx)
 
-    def get(self, idx=slice(-1), raw=False, datetimes=None):
+    def get(self,
+            idx = slice(-1),
+            raw : bool = False,
+            datetimes : Optional[bool] = None) -> pd.DataFrame:
+
         rec = self._h5[idx]
         if raw: return rec
         if isinstance(rec, np.void):
@@ -91,7 +119,11 @@ class Dataset(Element):
         df = utils.df_from_audata(rec, meta, self.file.time_reference, idx, datetimes)
         return df
 
-    def append(self, data, direct=False, time_cols={}, timedelta_cols={}):
+    def append(self,
+            data : Union[pd.DataFrame, np.recarray],
+            direct : bool = False,
+            time_cols : AbstractSet[str] = {},
+            timedelta_cols : AbstractSet[str] = {}):
         arr = None
         if isinstance(data, np.recarray):
             arr = data
@@ -110,19 +142,19 @@ class Dataset(Element):
         self._h5[-N_data:] = arr
 
     @property
-    def ncol(self):
+    def ncol(self) -> int:
         return len(self._h5.dtype)
 
     @property
-    def nrow(self):
+    def nrow(self) -> int:
         return len(self._h5)
 
     @property
-    def columns(self):
+    def columns(self) -> Dict[str, Any]:
         return self.meta['columns']
 
     @property
-    def shape(self):
+    def shape(self) -> Tuple[int, int]:
         return (self.nrow(), self.ncol())
 
     def __repr__(self):

@@ -1,10 +1,19 @@
 import h5py as h5
 
+from typing import Dict, List, Iterable, Tuple, Union
+
 from audata.element import Element
 
 
 class Group(Element):
-    def __init__(self, au_parent, name=''):
+    """
+    Group element. Acts largely like a container for datasets. Generally should not be
+    instantiated directly.
+    """
+    def __init__(self,
+            au_parent : Element,
+            name : str = ''):
+
         if not isinstance(au_parent, (Element, h5.File)):
             raise Exception(f'Invalid parent: {type(au_parent)}')
 
@@ -25,7 +34,8 @@ class Group(Element):
 
         super().__init__(au_parent, name)
 
-    def list(self):
+    def list(self) -> Dict[str, List[str]]:
+        """List all child attributes, groups, and datasets."""
         attrs = list(self._h5.attrs)
         others = list(self._h5)
         groups = [g for g in others if isinstance(self._h5[g], h5.Group)]
@@ -36,7 +46,13 @@ class Group(Element):
             'datasets': datasets
         }
 
-    def recurse(self):
+    def recurse(self) -> Iterable[Tuple[Element, str]]:
+        """
+        Recursively find all datasets.
+
+        Returns:
+            Iterable (generator) of tuples of (object: Element, name: str).
+        """
         names = [n for n in list(self._h5) if not n.startswith('.')]
         for name in names:
             elem = self.__getitem__(name)
@@ -65,7 +81,7 @@ class Group(Element):
     def __str__(self):
         return self.__repr__()
 
-    def __getitem__(self, key):
+    def __getitem__(self, key : str) -> Union['Dataset', 'Group', None]:
         if self._h5 is None:
             raise Exception('No group opened.')
 
@@ -83,7 +99,12 @@ class Group(Element):
         else:
             return None
 
-    def __setitem__(self, key, value, overwrite=True, **kwargs):
+    def __setitem__(self,
+            key : str,
+            value : Union[h5.Dataset, 'np.ndarray', 'np.recarray', 'pd.DataFrame', None],
+            overwrite : bool = True,
+            **kwargs):
+
         if self._h5 is None:
             raise Exception('No group opened.')
 
@@ -94,8 +115,12 @@ class Group(Element):
             from audata.dataset import Dataset
             Dataset.new(self, key, value, overwrite=overwrite, **kwargs)
 
-    def __contains__(self, key):
+    def __contains__(self, key : str) -> bool:
         return self._h5.__contains__(key)
 
-    def new_dataset(self, name, value, **kwargs):
+    def new_dataset(self,
+            name : str,
+            value : Union[h5.Dataset, 'np.ndarray', 'np.recarray', 'pd.DataFrame'],
+            **kwargs):
+
         self.__setitem__(name, value, **kwargs)

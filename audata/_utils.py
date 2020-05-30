@@ -7,8 +7,16 @@ import json
 
 from numpy.lib.recfunctions import drop_fields
 
+from typing import Optional, Dict, Any, AbstractSet, Tuple, Union
 
-def df_from_audata(rec, meta, time_ref=None, idx=slice(-1), datetimes=True):
+
+def df_from_audata(
+        rec,
+        meta : Dict[str, Any],
+        time_ref : Optional[dt.datetime] = None,
+        idx = slice(-1),
+        datetimes : bool = True) -> pd.DataFrame:
+
     df = pd.DataFrame(data=rec)
     for col in meta['columns']:
         m = meta['columns'][col]
@@ -25,7 +33,12 @@ def df_from_audata(rec, meta, time_ref=None, idx=slice(-1), datetimes=True):
             df[col] = df[col].values * dt.timedelta(seconds=1)
     return df
 
-def audata_from_df(df, time_ref=None, time_cols={}, timedelta_cols={}):
+def audata_from_df(
+        df : pd.DataFrame,
+        time_ref : Optional[dt.datetime] = None,
+        time_cols : AbstractSet[str] = {},
+        timedelta_cols : AbstractSet[str] = {}) -> Tuple[Dict[str, Any], np.recarray]:
+
     cols = list(df)
     columns = {}
     dtype_map = {}
@@ -77,7 +90,12 @@ def audata_from_df(df, time_ref=None, time_cols={}, timedelta_cols={}):
     rec = df.to_records(index=False, column_dtypes=dtype_map)
     return meta, rec
 
-def audata_from_arr(arr, time_ref=None, time_cols={}, timedelta_cols={}):
+def audata_from_arr(
+        arr : Union[np.ndarray, np.recarray],
+        time_ref : Optional[dt.datetime] = None,
+        time_cols : AbstractSet[str] = {},
+        timedelta_cols : AbstractSet[str] = {}) -> Tuple[Dict[str, Any], np.recarray]:
+
     # TODO: Factor types are not supported in this mode. Also not supported: non-string objects.
     cols = arr.dtype.names
     columns = {}
@@ -125,12 +143,12 @@ def audata_from_arr(arr, time_ref=None, time_cols={}, timedelta_cols={}):
     meta = {'columns': columns}
     return meta, arr
 
-def json2dict(json_str):
+def json2dict(json_str : str) -> Dict[str, Any]:
     if not isinstance(json_str, str):
         raise Exception(f'Expecting string, found {type(json_str)}')
     return json.loads(json_str)
 
-def dict2json(json_dict, format=True):
+def dict2json(json_dict : Dict[str, Any], format : bool = True) -> str:
     if not isinstance(json_dict, dict):
         raise Exception(f'Expecting dictionary, found {type(json_dict)}')
     json_str = json.dumps(json_dict)
