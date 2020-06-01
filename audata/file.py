@@ -12,6 +12,7 @@ from audata import __VERSION__, __DATA_VERSION__
 from audata._utils import json2dict, dict2json
 from audata.group import Group
 
+
 class File(Group):
     """
     Wrapper around an HDF5 file.
@@ -50,9 +51,9 @@ class File(Group):
     DateTimeFormat = '%Y-%m-%d %H:%M:%S.%f %Z'
 
     def __init__(self,
-            file : h5.File,
-            time_reference : Optional[dt.datetime] = None,
-            return_datetimes : bool = True):
+                 file: h5.File,
+                 time_reference: Optional[dt.datetime] = None,
+                 return_datetimes: bool = True):
         """
         Instantiates the File object.
 
@@ -88,7 +89,7 @@ class File(Group):
         return self._time_reference
 
     @time_reference.setter
-    def time_reference(self, new_ref : Union[str, dt.datetime]):
+    def time_reference(self, new_ref: Union[str, dt.datetime]):
         if not self.valid:
             raise Exception('Attempting to use uninitialized File!')
 
@@ -111,13 +112,13 @@ class File(Group):
 
     @classmethod
     def new(cls,
-            filename : str,
-            overwrite : bool = False,
-            time_reference : Union[Literal['now'], dt.datetime] = 'now',
-            title : Optional[str] = None,
-            author : Optional[str] = None,
-            organization : Optional[str] = None,
-            return_datetimes : bool = True,
+            filename: str,
+            overwrite: bool = False,
+            time_reference: Union[Literal['now'], dt.datetime] = 'now',
+            title: Optional[str] = None,
+            author: Optional[str] = None,
+            organization: Optional[str] = None,
+            return_datetimes: bool = True,
             **kwargs) -> 'File':
         """
         Create a new file.
@@ -159,16 +160,18 @@ class File(Group):
                 'units': 'seconds'
             }
         })
-        c = cls(f, time_reference=time_reference, return_datetimes=return_datetimes)
+        c = cls(f,
+                time_reference=time_reference,
+                return_datetimes=return_datetimes)
         return c
 
     @classmethod
     def open(cls,
-            filename : str,
-            create : bool = False,
-            readonly : bool = True,
-            return_datetimes : bool = True,
-            **kwargs) -> 'File':
+             filename: str,
+             create: bool = False,
+             readonly: bool = True,
+             return_datetimes: bool = True,
+             **kwargs) -> 'File':
         """
         Open an audata file.
 

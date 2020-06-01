@@ -3,6 +3,7 @@ import h5py as h5
 
 
 class Annotation:
+
     def __init__(self, root):
         if not isinstance(root, h5.HLObject):
             raise Exception('Invalid  HDF5 high-level object.')
@@ -31,4 +32,5 @@ class Annotation:
             return None
 
     def add_time_range(self, t0, t1):
-        df = self.tranges
+        # df = self.tranges
+        raise NotImplementedError()

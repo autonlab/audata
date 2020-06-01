@@ -20,19 +20,10 @@ setup(
     author='Anthony Wertz',
     author_email='awertz@cmu.edu',
     license='GNU LGPL 3',
-    entry_points={
-        'console_scripts': ['csv2audata=audata.bin.csv2audata:main']
-    },
+    entry_points={'console_scripts': ['csv2audata=audata.bin.csv2audata:main']},
     install_requires=[
-        'numpy',
-        'pandas',
-        'h5py',
-        'jsbeautifier',
-        'lorem',
-        'tzlocal',
-        'h5py'
+        'numpy', 'pandas', 'h5py', 'jsbeautifier', 'lorem', 'tzlocal', 'h5py'
     ],
     python_requires='>=3.8',
     include_dirs=[np.get_include()],
-    packages=find_packages()
-)
+    packages=find_packages())

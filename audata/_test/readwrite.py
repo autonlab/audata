@@ -17,14 +17,22 @@ if __name__ == '__main__':
     N = 1000
     df = pd.DataFrame(
         data={
-            'time': [f.time_reference + dt.timedelta(seconds=x/250.0) for x in range(N)],
-            'time2': [f.time_reference + dt.timedelta(seconds=x/250.0 + 0.5) for x in range(N)],
-            'ints': list(range(N)),
-            'floats': [i*1.1 for i in list(range(N))],
+            'time': [
+                f.time_reference + dt.timedelta(seconds=x / 250.0)
+                for x in range(N)
+            ],
+            'time2': [
+                f.time_reference + dt.timedelta(seconds=x / 250.0 + 0.5)
+                for x in range(N)
+            ],
+            'ints':
+                list(range(N)),
+            'floats': [i * 1.1 for i in list(range(N))],
             'strings': [lorem.sentence() for x in range(N)],
-            'factor': pd.Series([['Cat', 'Dog', 'Liger'][x % 3] for x in range(N)], dtype='category')
-        }
-    )
+            'factor':
+                pd.Series([['Cat', 'Dog', 'Liger'][x % 3] for x in range(N)],
+                          dtype='category')
+        })
     f['test/mydf'] = df
     f['test/mydf'].append(df)
 

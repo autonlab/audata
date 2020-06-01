@@ -11,13 +11,14 @@ from typing import Optional
 import audata
 
 
-def _mkfn(path : str) -> str:
+def _mkfn(path: str) -> str:
     if os.path.isdir(path):
         return os.path.basename(path) + '.h5'
     else:
         return os.path.splitext(os.path.basename(path))[0] + '.h5'
 
-def _addcsv(f : audata.File, nm : str, path : str):
+
+def _addcsv(f: audata.File, nm: str, path: str):
     df = pd.read_csv(path)
     for col in df.columns:
         # Does it have a name that can be interpreted as a "numeric" time?
@@ -39,22 +40,25 @@ def _addcsv(f : audata.File, nm : str, path : str):
                     df[col] = df[col].apply(parse)
                 else:
                     print('    Parsing time offset column: {}'.format(col))
-                    df[col] = f.time_reference + df[col]*dt.timedelta(seconds=1)
+                    df[col] = f.time_reference + df[col] * dt.timedelta(
+                        seconds=1)
 
             else:
                 arity = len(df[col].unique())
-                pct = float(arity)/len(df)*100
+                pct = float(arity) / len(df) * 100
                 if pct > 10:
-                    print('    Found string column: {} (arity {}%)'.format(col, round(pct)))
+                    print('    Found string column: {} (arity {}%)'.format(
+                        col, round(pct)))
                 else:
-                    print('    Parsing categorical column: {} (arity {} / {}%)'.format(
-                        col, arity, round(pct)))
+                    print('    Parsing categorical column: {} (arity {} / {}%)'.
+                          format(col, arity, round(pct)))
                     df[col] = pd.Series(df[col], dtype='category')
         else:
             print('    Found {} column: {}'.format(df[col].dtype, col))
     f[nm] = df
 
-def _walk(f : audata.File, path : str, prefix : Optional[str] = None):
+
+def _walk(f: audata.File, path: str, prefix: Optional[str] = None):
     if path is None or len(path) == 0 or path[0] == '.':
         return
     elif os.path.isdir(path):
@@ -64,13 +68,13 @@ def _walk(f : audata.File, path : str, prefix : Optional[str] = None):
     elif os.path.splitext(path)[1].lower() == '.csv':
         if prefix is None:
             prefix = ''
-        nm = '{}{}{}'.format(
-            prefix, '/' if prefix != '' else '',
-            os.path.splitext(os.path.basename(path))[0])
+        nm = '{}{}{}'.format(prefix, '/' if prefix != '' else '',
+                             os.path.splitext(os.path.basename(path))[0])
         print('  adding {}'.format(nm))
         _addcsv(f, nm, path)
     else:
         return
+
 
 def main():
     """
@@ -91,8 +95,14 @@ def main():
         path (str): Path to a CSV file or directory to be recursively scanned for CSVs.
     """
     parser = argparse.ArgumentParser(
-        description='Converts CSV files or nested directories containing multiple CSVs to an audata HDF5 file.')
-    parser.add_argument('path', type=str, help='Path to a CSV file or directory to be recursively scanned for CSVs.')
+        description=
+        'Converts CSV files or nested directories containing multiple CSVs to an audata HDF5 file.'
+    )
+    parser.add_argument(
+        'path',
+        type=str,
+        help=
+        'Path to a CSV file or directory to be recursively scanned for CSVs.')
     args = parser.parse_args()
 
     fn = _mkfn(args.path)
@@ -100,6 +110,7 @@ def main():
     with audata.File.new(fn, overwrite=True) as f:
         _walk(f, args.path)
         print(f)
+
 
 if __name__ == '__main__':
     main()

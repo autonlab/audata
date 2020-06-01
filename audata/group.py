@@ -10,9 +10,8 @@ class Group(Element):
     Group element. Acts largely like a container for datasets. Generally should not be
     instantiated directly.
     """
-    def __init__(self,
-            au_parent : Element,
-            name : str = ''):
+
+    def __init__(self, au_parent: Element, name: str = ''):
 
         if not isinstance(au_parent, (Element, h5.File)):
             raise Exception(f'Invalid parent: {type(au_parent)}')
@@ -26,11 +25,15 @@ class Group(Element):
                 target = parent
             else:
                 if name not in parent:
-                    raise Exception(f'Path {name} was not found in {parent.file.filename}:{parent.name}')
+                    raise Exception(
+                        f'Path {name} was not found in {parent.file.filename}:{parent.name}'
+                    )
                 else:
                     target = parent[name]
             if not isinstance(target, h5.Group):
-                raise Exception(f'Path "{name}" is not a group in {parent.file.filename}:{parent.name}')
+                raise Exception(
+                    f'Path "{name}" is not a group in {parent.file.filename}:{parent.name}'
+                )
 
         super().__init__(au_parent, name)
 
@@ -40,11 +43,7 @@ class Group(Element):
         others = list(self._h5)
         groups = [g for g in others if isinstance(self._h5[g], h5.Group)]
         datasets = [d for d in others if isinstance(self._h5[d], h5.Dataset)]
-        return {
-            'attributes': attrs,
-            'groups': groups,
-            'datasets': datasets
-        }
+        return {'attributes': attrs, 'groups': groups, 'datasets': datasets}
 
     def recurse(self) -> Iterable[Tuple[Element, str]]:
         """
@@ -82,7 +81,7 @@ class Group(Element):
     def __str__(self):
         return self.__repr__()
 
-    def __getitem__(self, key : str) -> Union['Dataset', 'Group', None]:
+    def __getitem__(self, key: str) -> Union['Dataset', 'Group', None]:
         if self._h5 is None:
             raise Exception('No group opened.')
 
@@ -96,15 +95,17 @@ class Group(Element):
             elif isinstance(self._h5[key], h5.Group):
                 return Group(self, key)
             else:
-                raise Exception('Unsure how to handle class: {}'.format(type(self._h5[key])))
+                raise Exception('Unsure how to handle class: {}'.format(
+                    type(self._h5[key])))
         else:
             return None
 
     def __setitem__(self,
-            key : str,
-            value : Union[h5.Dataset, 'np.ndarray', 'np.recarray', 'pd.DataFrame', None],
-            overwrite : bool = True,
-            **kwargs):
+                    key: str,
+                    value: Union[h5.Dataset, 'np.ndarray', 'np.recarray',
+                                 'pd.DataFrame', None],
+                    overwrite: bool = True,
+                    **kwargs):
 
         if self._h5 is None:
             raise Exception('No group opened.')
@@ -116,12 +117,13 @@ class Group(Element):
             from audata.dataset import Dataset
             Dataset.new(self, key, value, overwrite=overwrite, **kwargs)
 
-    def __contains__(self, key : str) -> bool:
+    def __contains__(self, key: str) -> bool:
         return self._h5.__contains__(key)
 
-    def new_dataset(self,
-            name : str,
-            value : Union[h5.Dataset, 'np.ndarray', 'np.recarray', 'pd.DataFrame'],
+    def new_dataset(
+            self, name: str,
+            value: Union[h5.
+                         Dataset, 'np.ndarray', 'np.recarray', 'pd.DataFrame'],
             **kwargs):
 
         self.__setitem__(name, value, **kwargs)

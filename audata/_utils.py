@@ -10,12 +10,11 @@ from numpy.lib.recfunctions import drop_fields
 from typing import Optional, Dict, Any, AbstractSet, Tuple, Union
 
 
-def df_from_audata(
-        rec,
-        meta : Dict[str, Any],
-        time_ref : Optional[dt.datetime] = None,
-        idx = slice(-1),
-        datetimes : bool = True) -> pd.DataFrame:
+def df_from_audata(rec,
+                   meta: Dict[str, Any],
+                   time_ref: Optional[dt.datetime] = None,
+                   idx=slice(-1),
+                   datetimes: bool = True) -> pd.DataFrame:
 
     df = pd.DataFrame(data=rec)
     for col in meta['columns']:
@@ -33,11 +32,12 @@ def df_from_audata(
             df[col] = df[col].values * dt.timedelta(seconds=1)
     return df
 
-def audata_from_df(
-        df : pd.DataFrame,
-        time_ref : Optional[dt.datetime] = None,
-        time_cols : AbstractSet[str] = {},
-        timedelta_cols : AbstractSet[str] = {}) -> Tuple[Dict[str, Any], np.recarray]:
+
+def audata_from_df(df: pd.DataFrame,
+                   time_ref: Optional[dt.datetime] = None,
+                   time_cols: AbstractSet[str] = {},
+                   timedelta_cols: AbstractSet[str] = {}
+                  ) -> Tuple[Dict[str, Any], np.recarray]:
 
     cols = list(df)
     columns = {}
@@ -62,10 +62,12 @@ def audata_from_df(
             m['signed'] = d.kind == 'i'
         elif d.kind == 'M':
             if time_ref is None:
-                raise(Exception('Cannot convert timestamps without time reference!'))
+                raise (Exception(
+                    'Cannot convert timestamps without time reference!'))
 
             m['type'] = 'time'
-            df[col] = (df[col].dt.tz_convert(time_ref.tzinfo) - time_ref).dt.total_seconds()
+            df[col] = (df[col].dt.tz_convert(time_ref.tzinfo) -
+                       time_ref).dt.total_seconds()
         elif d.kind == 'm':
             m['type'] = 'timedelta'
             df[col] = df[col].dt.total_seconds()
@@ -78,11 +80,7 @@ def audata_from_df(
             m['type'] = 'timedelta'
             dtype_map[col] = 'f8'
         else:
-            typenames = {
-                'b': 'boolean',
-                'f': 'real',
-                'c': 'complex'
-            }
+            typenames = {'b': 'boolean', 'f': 'real', 'c': 'complex'}
             m['type'] = typenames[d.kind]
         columns[col] = m
 
@@ -90,11 +88,12 @@ def audata_from_df(
     rec = df.to_records(index=False, column_dtypes=dtype_map)
     return meta, rec
 
-def audata_from_arr(
-        arr : Union[np.ndarray, np.recarray],
-        time_ref : Optional[dt.datetime] = None,
-        time_cols : AbstractSet[str] = {},
-        timedelta_cols : AbstractSet[str] = {}) -> Tuple[Dict[str, Any], np.recarray]:
+
+def audata_from_arr(arr: Union[np.ndarray, np.recarray],
+                    time_ref: Optional[dt.datetime] = None,
+                    time_cols: AbstractSet[str] = {},
+                    timedelta_cols: AbstractSet[str] = {}
+                   ) -> Tuple[Dict[str, Any], np.recarray]:
 
     # TODO: Factor types are not supported in this mode. Also not supported: non-string objects.
     cols = arr.dtype.names
@@ -105,12 +104,14 @@ def audata_from_arr(
 
         if d.kind == 'M':
             if time_ref is None:
-                raise(Exception('Cannot convert timestamps without time reference!'))
+                raise (Exception(
+                    'Cannot convert timestamps without time reference!'))
 
             # Note: Since numpy datetime64 types are note timezone aware, we must assume the datetimes
             # use the same timezone.
             m['type'] = 'time'
-            arr[col] = (arr[col] - np.datetime64(time_ref.replace(tzinfo=None))) / np.timedelta64(1, 's')
+            arr[col] = (arr[col] - np.datetime64(
+                time_ref.replace(tzinfo=None))) / np.timedelta64(1, 's')
         elif d.kind == 'm':
             m['type'] = 'timedelta'
             arr[col] = arr[col] / np.timedelta64(1, 's')
@@ -132,23 +133,21 @@ def audata_from_arr(
             m['type'] = 'integer'
             m['signed'] = d.kind == 'i'
         else:
-            typenames = {
-                'b': 'boolean',
-                'f': 'real',
-                'c': 'complex'
-            }
+            typenames = {'b': 'boolean', 'f': 'real', 'c': 'complex'}
             m['type'] = typenames[d.kind]
         columns[col] = m
 
     meta = {'columns': columns}
     return meta, arr
 
-def json2dict(json_str : str) -> Dict[str, Any]:
+
+def json2dict(json_str: str) -> Dict[str, Any]:
     if not isinstance(json_str, str):
         raise Exception(f'Expecting string, found {type(json_str)}')
     return json.loads(json_str)
 
-def dict2json(json_dict : Dict[str, Any], format : bool = True) -> str:
+
+def dict2json(json_dict: Dict[str, Any], format: bool = True) -> str:
     if not isinstance(json_dict, dict):
         raise Exception(f'Expecting dictionary, found {type(json_dict)}')
     json_str = json.dumps(json_dict)
