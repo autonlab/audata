@@ -1,8 +1,11 @@
+"""
+Classes for wrapping HDF5 datasets.
+"""
+from typing import Union, AbstractSet, Optional, Tuple, Any, Dict
+
 import numpy as np
 import pandas as pd
 import h5py as h5
-
-from typing import Union, AbstractSet, Optional, Tuple, Any, Dict
 
 from audata import _utils as utils
 from audata.element import Element
@@ -18,7 +21,7 @@ class Dataset(Element):
         if not isinstance(au_parent, Element):
             raise Exception(f'Invalid parent: {type(au_parent)}')
 
-        parent = au_parent._h5
+        parent = au_parent.hdf
         if not isinstance(parent, h5.Group):
             raise Exception(f'Invalid parent: {type(parent)}')
 
@@ -36,11 +39,12 @@ class Dataset(Element):
             value: Union[h5.Dataset, np.ndarray, np.recarray, pd.DataFrame],
             overwrite: bool = False,
             **kwargs) -> 'Dataset':
+        """Create a new Dataset object."""
 
         if not isinstance(au_parent, Element):
             raise Exception('Must send Element.')
 
-        parent = au_parent._h5
+        parent = au_parent.hdf
         if not isinstance(parent, h5.Group):
             raise Exception(f'Invalid parent: {type(parent)}')
 
@@ -68,8 +72,15 @@ class Dataset(Element):
                          au_parent: Element,
                          name: str,
                          arr: Union[np.ndarray, np.recarray],
-                         time_cols: AbstractSet[str] = {},
-                         timedelta_cols: AbstractSet[str] = {}) -> 'Dataset':
+                         time_cols: Optional[AbstractSet[str]] = None,
+                         timedelta_cols: Optional[AbstractSet[str]] = None
+                        ) -> 'Dataset':
+        """Create a new dataset from a numpy recarray or ndarray."""
+
+        if time_cols is None:
+            time_cols = set({})
+        if timedelta_cols is None:
+            timedelta_cols = set({})
 
         # ATW: TODO: Less lame.
         if arr.dtype.names is None:
@@ -81,41 +92,47 @@ class Dataset(Element):
             time_ref=au_parent.file.time_reference,
             time_cols=time_cols,
             timedelta_cols=timedelta_cols)
-        au_parent._h5.create_dataset(name,
+        au_parent.hdf.create_dataset(name,
                                      chunks=True,
                                      maxshape=(None,),
                                      compression='gzip',
                                      shuffle=True,
                                      fletcher32=True,
                                      data=recs)
-        au_parent._h5[name].attrs['.meta'] = utils.dict2json(meta)
-        d = cls(au_parent, name)
-        return d
+        au_parent.hdf[name].attrs['.meta'] = utils.dict2json(meta)
+        dataset = cls(au_parent, name)
+        return dataset
 
     @classmethod
     def __new_from_dataframe(cls,
                              au_parent: Element,
                              name: str,
-                             df: pd.DataFrame,
-                             time_cols: AbstractSet[str] = {},
-                             timedelta_cols: AbstractSet[str] = {}
+                             data: pd.DataFrame,
+                             time_cols: Optional[AbstractSet[str]] = None,
+                             timedelta_cols: Optional[AbstractSet[str]] = None
                             ) -> 'Dataset':
+        """Create a new dataset from a pandas DataFrame."""
+
+        if time_cols is None:
+            time_cols = set({})
+        if timedelta_cols is None:
+            timedelta_cols = set({})
 
         meta, recs = utils.audata_from_df(
-            df,
+            data,
             time_ref=au_parent.file.time_reference,
             time_cols=time_cols,
             timedelta_cols=timedelta_cols)
-        au_parent._h5.create_dataset(name,
+        au_parent.hdf.create_dataset(name,
                                      chunks=True,
                                      maxshape=(None,),
                                      compression='gzip',
                                      shuffle=True,
                                      fletcher32=True,
                                      data=recs)
-        au_parent._h5[name].attrs['.meta'] = utils.dict2json(meta)
-        d = cls(au_parent, name)
-        return d
+        au_parent.hdf[name].attrs['.meta'] = utils.dict2json(meta)
+        dataset = cls(au_parent, name)
+        return dataset
 
     def __getitem__(self, idx=slice(-1)) -> pd.DataFrame:
         return self.get(idx)
@@ -124,24 +141,33 @@ class Dataset(Element):
             idx=slice(-1),
             raw: bool = False,
             datetimes: Optional[bool] = None) -> pd.DataFrame:
+        """Return a dataset as a pandas DataFrame."""
 
-        rec = self._h5[idx]
-        if raw: return rec
+        rec = self.hdf[idx]
+        if raw:
+            return rec
         if isinstance(rec, np.void):
             rec = np.array([rec], dtype=rec.dtype)
         meta = self.meta
 
         if datetimes is None:
             datetimes = self.file.return_datetimes
-        df = utils.df_from_audata(rec, meta, self.file.time_reference, idx,
-                                  datetimes)
-        return df
+        data = utils.df_from_audata(rec, meta, self.file.time_reference,
+                                    datetimes)
+        return data
 
     def append(self,
                data: Union[pd.DataFrame, np.recarray],
                direct: bool = False,
-               time_cols: AbstractSet[str] = {},
-               timedelta_cols: AbstractSet[str] = {}):
+               time_cols: Optional[AbstractSet[str]] = None,
+               timedelta_cols: Optional[AbstractSet[str]] = None):
+        """Append additional data to a dataset."""
+
+        if time_cols is None:
+            time_cols = set({})
+        if timedelta_cols is None:
+            timedelta_cols = set({})
+
         arr = None
         if isinstance(data, np.recarray):
             arr = data
@@ -152,45 +178,49 @@ class Dataset(Element):
                                                timedelta_cols=timedelta_cols)
         elif direct:
             raise ValueError(
-                f'Data must be in a recarray already to use direct append! Instead {type(data)} was sent.'
-            )
+                ('Data must be in a recarray already to use direct append! '
+                 f'Instead {type(data)} was sent.'))
         elif isinstance(data, pd.DataFrame):
-            # TODO: This does not validate categorical levels. So keep them the same!
+            # Issue 3: This does not validate categorical levels. So keep them the same!
             _, arr = utils.audata_from_df(data,
                                           time_ref=self.time_reference,
                                           time_cols=time_cols,
                                           timedelta_cols=timedelta_cols)
 
-        N_data = len(arr)
-        self._h5.resize((self.nrow + N_data,))
-        self._h5[-N_data:] = arr
+        data_len = len(arr)
+        self.hdf.resize((self.nrow + data_len,))
+        self.hdf[-data_len:] = arr
 
     @property
     def ncol(self) -> int:
-        return len(self._h5.dtype)
+        """Number of columns in dataset."""
+        return len(self.hdf.dtype)
 
     @property
     def nrow(self) -> int:
-        return len(self._h5)
+        """Number of rows in dataset."""
+        return len(self.hdf)
 
     @property
     def columns(self) -> Dict[str, Any]:
+        """Get dictionary of column specifications."""
         return self.meta['columns']
 
     @property
     def shape(self) -> Tuple[int, int]:
+        """Get dataset shape tuple (rows, cols)."""
         return (self.nrow(), self.ncol())
 
     def __repr__(self):
 
-        def trunc(s, N=20):
-            if isinstance(s, str):
-                if len(s) > N:
-                    return s[:(N - 3)] + '...'
-                else:
-                    return s
+        def trunc(string, max_len=20):
+            if not isinstance(string, str):
+                string = f'{string}'
+
+            if len(string) > max_len:
+                return string[:(max_len - 3)] + '...'
             else:
-                return f'{s}'
+                return string
 
         lines = []
         ncol = self.ncol
@@ -198,19 +228,20 @@ class Dataset(Element):
         lines.append(f'{self.name}: Dataset [{nrow} rows x {ncol} cols]')
         cols = self.columns
         for col in cols:
-            c = cols[col]
-            if c['type'] == 'integer':
+            col_meta = cols[col]
+            if col_meta['type'] == 'integer':
                 tstr = 'integer ({})'.format(
-                    'signed' if c['signed'] else 'unsigned')
-            elif c['type'] == 'factor':
-                nlevels = len(c['levels'])
-                lvls = ', '.join(
-                    [trunc(lvl) for lvl in c['levels'][:min(3, nlevels)]])
+                    'signed' if col_meta['signed'] else 'unsigned')
+            elif col_meta['type'] == 'factor':
+                nlevels = len(col_meta['levels'])
+                lvls = ', '.join([
+                    trunc(lvl) for lvl in col_meta['levels'][:min(3, nlevels)]
+                ])
                 if nlevels > 3:
                     lvls += ', ...'
                 tstr = f'factor with {nlevels} levels [{lvls}]'
             else:
-                tstr = c['type']
+                tstr = col_meta['type']
             lines.append(f'  {col}: {tstr}')
         return '\n'.join(lines)
 

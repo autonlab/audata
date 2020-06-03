@@ -1,75 +1,83 @@
+"""Script to generate some sample data."""
+import os
+import datetime as dt
+
 import pandas as pd
 import numpy as np
 import lorem
-import os
-import datetime as dt
 import tzlocal
 
 if __name__ == '__main__':
 
-    def ensure(fn):
-        fn = 'patient123/{}'.format(fn)
-        os.makedirs(os.path.dirname(fn), exist_ok=True)
-        return fn
+    def ensure(filename):
+        """Ensure directory to store file exists."""
+        filename = 'patient123/{}'.format(filename)
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        return filename
 
     time_reference = dt.datetime.now(tzlocal.get_localzone())
-    P = 60 * 30  # s
+    PERIOD = 60 * 30  # s
 
     print('Making low-rate...')
-    Fs = 1. / 5  # Hz
-    N = int(Fs * P)
+    SAMPLE_FREQ = 1. / 5  # Hz
+    SAMPLES = int(SAMPLE_FREQ * PERIOD)
     pd.DataFrame(
         data={
             'time': [
-                time_reference + dt.timedelta(seconds=x / Fs) for x in range(N)
+                time_reference + dt.timedelta(seconds=x / SAMPLE_FREQ)
+                for x in range(SAMPLES)
             ],
             'time2': [
-                time_reference + dt.timedelta(seconds=x / Fs + 0.5)
-                for x in range(N)
+                time_reference + dt.timedelta(seconds=x / SAMPLE_FREQ + 0.5)
+                for x in range(SAMPLES)
             ],
             'ints':
-                list(range(N)),
-            'floats': [i * 1.1 for i in list(range(N))],
-            'strings': [lorem.sentence() for x in range(N)],
+                list(range(SAMPLES)),
+            'floats': [i * 1.1 for i in list(range(SAMPLES))],
+            'strings': [lorem.sentence() for x in range(SAMPLES)],
             'factor':
-                pd.Series([['Cat', 'Dog', 'Liger'][x % 3] for x in range(N)],
+                pd.Series([['Cat', 'Dog', 'Liger'][x % 3]
+                           for x in range(SAMPLES)],
                           dtype='category')
         }).to_csv(ensure('some_table.csv'), index=False)
 
     print('Making 500Hz ECG...')
-    Fs = 500  # Hz
-    N = int(Fs * P)
+    SAMPLE_FREQ = 500  # Hz
+    SAMPLES = int(SAMPLE_FREQ * PERIOD)
     pd.DataFrame(
         data={
-            'time': [x / Fs for x in range(N)],
-            'II': np.random.uniform(-2, 2, N),
-            'III': np.random.uniform(-2, 2, N),
-            'IV': np.random.uniform(-2, 2, N)
+            'time': [x / SAMPLE_FREQ for x in range(SAMPLES)],
+            'II': np.random.uniform(-2, 2, SAMPLES),
+            'III': np.random.uniform(-2, 2, SAMPLES),
+            'IV': np.random.uniform(-2, 2, SAMPLES)
         }).to_csv(ensure('waveform/ecg.csv'), index=False)
 
     print('Making 250Hz waveform...')
-    Fs = 250  # Hz
-    N = int(Fs * P)
+    SAMPLE_FREQ = 250  # Hz
+    SAMPLES = int(SAMPLE_FREQ * PERIOD)
     pd.DataFrame(
         data={
-            'time': [x / Fs for x in range(N)],
-            'ART': np.random.uniform(50, 90, N),
-            'PAP': np.random.uniform(10, 15, N),
-            'CVP': np.random.uniform(0, 5, N)
+            'time': [x / SAMPLE_FREQ for x in range(SAMPLES)],
+            'ART': np.random.uniform(50, 90, SAMPLES),
+            'PAP': np.random.uniform(10, 15, SAMPLES),
+            'CVP': np.random.uniform(0, 5, SAMPLES)
         }).to_csv(ensure('waveform/pressures.csv'), index=False)
 
     print('Making vitals...')
-    Fs = 1.5  # Hz
-    N = int(Fs * P)
-    pd.DataFrame(data={
-        'time': [x / Fs for x in range(N)],
-        'Sys': np.random.uniform(80, 90, N)
-    }).to_csv(ensure('vitals/some_device/Sys.csv'), index=False)
-    pd.DataFrame(data={
-        'time': [x / Fs for x in range(N)],
-        'MAP': np.random.uniform(70, 80, N)
-    }).to_csv(ensure('vitals/some_device/MAP.csv'), index=False)
-    pd.DataFrame(data={
-        'time': [x / Fs for x in range(N)],
-        'Dia': np.random.uniform(50, 65, N)
-    }).to_csv(ensure('vitals/some_device/Dia.csv'), index=False)
+    SAMPLE_FREQ = 1.5  # Hz
+    SAMPLES = int(SAMPLE_FREQ * PERIOD)
+    pd.DataFrame(
+        data={
+            'time': [x / SAMPLE_FREQ for x in range(SAMPLES)],
+            'Sys': np.random.uniform(80, 90, SAMPLES)
+        }).to_csv(ensure('vitals/some_device/Sys.csv'), index=False)
+    pd.DataFrame(
+        data={
+            'time': [x / SAMPLE_FREQ for x in range(SAMPLES)],
+            'MAP': np.random.uniform(70, 80, SAMPLES)
+        }).to_csv(ensure('vitals/some_device/MAP.csv'), index=False)
+    pd.DataFrame(
+        data={
+            'time': [x / SAMPLE_FREQ for x in range(SAMPLES)],
+            'Dia': np.random.uniform(50, 65, SAMPLES)
+        }).to_csv(ensure('vitals/some_device/Dia.csv'), index=False)

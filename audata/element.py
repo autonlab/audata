@@ -1,5 +1,6 @@
-import h5py as h5
+"""Base element class."""
 from typing import Optional, Union, Dict, Any
+import h5py as h5
 
 from audata._utils import json2dict, dict2json
 
@@ -29,9 +30,15 @@ class Element:
             raise Exception(f'Invalid parent: {type(parent)}.')
 
     def clear(self):
+        """Clear members to reset class."""
         self.parent = None
         self.file = None
         self._h5 = None
+
+    @property
+    def hdf(self) -> Optional[h5.HLObject]:
+        """Get wrapped HDF object."""
+        return self._h5
 
     @property
     def name(self) -> Optional[str]:

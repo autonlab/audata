@@ -1,6 +1,8 @@
-from setuptools import setup, find_packages
-import numpy as np
+"""audata setup."""
 import os
+from setuptools import setup, find_packages
+
+import numpy as np
 
 from audata import __VERSION__
 
@@ -8,8 +10,9 @@ NAME = 'audata'
 VERSION = __VERSION__
 
 
-def read(fn):
-    return open(os.path.join(os.path.dirname(__file__), fn)).read()
+def read(filename):
+    """Readlines of filename relative to setup file path."""
+    return open(os.path.join(os.path.dirname(__file__), filename)).read()
 
 
 setup(

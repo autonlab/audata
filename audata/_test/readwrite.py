@@ -1,8 +1,8 @@
+""" Script to test reading and writing an audata file."""
+import datetime as dt
+
 import pandas as pd
 import numpy as np
-
-import datetime as dt
-from dateutil import parser
 import lorem
 
 from audata import File

@@ -1,154 +1,167 @@
+"""Helper utilities."""
+import datetime as dt
+import json
+from typing import Optional, Dict, Any, AbstractSet, Tuple, Union
+
 import pandas as pd
 import numpy as np
 import h5py as h5
-import datetime as dt
 import jsbeautifier as jsb
-import json
-
-from numpy.lib.recfunctions import drop_fields
-
-from typing import Optional, Dict, Any, AbstractSet, Tuple, Union
 
 
 def df_from_audata(rec,
                    meta: Dict[str, Any],
                    time_ref: Optional[dt.datetime] = None,
-                   idx=slice(-1),
                    datetimes: bool = True) -> pd.DataFrame:
+    """Create a pandas DataFrame from an audata Dataset."""
 
-    df = pd.DataFrame(data=rec)
+    data = pd.DataFrame(data=rec)
     for col in meta['columns']:
-        m = meta['columns'][col]
-        if m['type'] == 'factor':
-            df[col] = pd.Categorical.from_codes(df[col].values, m['levels'])
-        elif m['type'] == 'time':
+        col_meta = meta['columns'][col]
+        if col_meta['type'] == 'factor':
+            data[col] = pd.Categorical.from_codes(data[col].values,
+                                                  col_meta['levels'])
+        elif col_meta['type'] == 'time':
             if time_ref is None:
                 raise Exception('Cannot read timestamps without reference!')
             if datetimes:
-                df[col] = time_ref + df[col].values * dt.timedelta(seconds=1)
+                data[col] = time_ref + data[col].values * dt.timedelta(
+                    seconds=1)
             else:
-                df[col] += time_ref.timestamp()
-        elif m['type'] == 'timedelta':
-            df[col] = df[col].values * dt.timedelta(seconds=1)
-    return df
+                data[col] += time_ref.timestamp()
+        elif col_meta['type'] == 'timedelta':
+            data[col] = data[col].values * dt.timedelta(seconds=1)
+    return data
 
 
-def audata_from_df(df: pd.DataFrame,
+def audata_from_df(data: pd.DataFrame,
                    time_ref: Optional[dt.datetime] = None,
-                   time_cols: AbstractSet[str] = {},
-                   timedelta_cols: AbstractSet[str] = {}
+                   time_cols: Optional[AbstractSet[str]] = None,
+                   timedelta_cols: Optional[AbstractSet[str]] = None
                   ) -> Tuple[Dict[str, Any], np.recarray]:
+    """Create the recarray and meta from a DataFrame to be stored to the audata file."""
 
-    cols = list(df)
+    if time_cols is None:
+        time_cols = set({})
+    if timedelta_cols is None:
+        time_cols = set({})
+    cols = list(data)
     columns = {}
     dtype_map = {}
     for col in cols:
-        m = {}
-        d = df[col].dtype
+        col_meta = {}
+        col_dtype = data[col].dtype
 
-        if d == h5.string_dtype():
+        if col_dtype == h5.string_dtype():
             # String d-type has to be set explicitely or HDF5 won't accept it. Default to
             # variable-length strings, although in the future we might want to support fixed-
             # length strings which can be compressed (vlen strings are NOT compressed).
             dtype_map[col] = h5.string_dtype()
-            m['type'] = 'string'
-        elif d.name == 'category':
-            m['type'] = 'factor'
-            m['levels'] = list(df[col].cat.categories)
-            m['ordered'] = df[col].cat.ordered
-            df[col] = df[col].cat.codes
-        elif d.kind in ['i', 'u']:
-            m['type'] = 'integer'
-            m['signed'] = d.kind == 'i'
-        elif d.kind == 'M':
+            col_meta['type'] = 'string'
+        elif col_dtype.name == 'category':
+            col_meta['type'] = 'factor'
+            col_meta['levels'] = list(data[col].cat.categories)
+            col_meta['ordered'] = data[col].cat.ordered
+            data[col] = data[col].cat.codes
+        elif col_dtype.kind in ['i', 'u']:
+            col_meta['type'] = 'integer'
+            col_meta['signed'] = col_dtype.kind == 'i'
+        elif col_dtype.kind == 'M':
             if time_ref is None:
                 raise (Exception(
                     'Cannot convert timestamps without time reference!'))
 
-            m['type'] = 'time'
-            df[col] = (df[col].dt.tz_convert(time_ref.tzinfo) -
-                       time_ref).dt.total_seconds()
-        elif d.kind == 'm':
-            m['type'] = 'timedelta'
-            df[col] = df[col].dt.total_seconds()
+            col_meta['type'] = 'time'
+            data[col] = (data[col].dt.tz_convert(time_ref.tzinfo) -
+                         time_ref).dt.total_seconds()
+        elif col_dtype.kind == 'm':
+            col_meta['type'] = 'timedelta'
+            data[col] = data[col].dt.total_seconds()
         elif col in time_cols:
             # Assume offset from reference in appropriate units.
-            m['type'] = 'time'
+            col_meta['type'] = 'time'
             dtype_map[col] = 'f8'
         elif col in timedelta_cols:
             # Assume delta in appropriate units.
-            m['type'] = 'timedelta'
+            col_meta['type'] = 'timedelta'
             dtype_map[col] = 'f8'
         else:
             typenames = {'b': 'boolean', 'f': 'real', 'c': 'complex'}
-            m['type'] = typenames[d.kind]
-        columns[col] = m
+            col_meta['type'] = typenames[col_dtype.kind]
+        columns[col] = col_meta
 
     meta = {'columns': columns}
-    rec = df.to_records(index=False, column_dtypes=dtype_map)
+    rec = data.to_records(index=False, column_dtypes=dtype_map)
     return meta, rec
 
 
 def audata_from_arr(arr: Union[np.ndarray, np.recarray],
                     time_ref: Optional[dt.datetime] = None,
-                    time_cols: AbstractSet[str] = {},
-                    timedelta_cols: AbstractSet[str] = {}
+                    time_cols: Optional[AbstractSet[str]] = None,
+                    timedelta_cols: Optional[AbstractSet[str]] = None
                    ) -> Tuple[Dict[str, Any], np.recarray]:
+    """Create the recarray and meta from a recarray or ndarray to be stored to the audata file."""
 
-    # TODO: Factor types are not supported in this mode. Also not supported: non-string objects.
+    # Issue 4: Factor types are not supported in this mode. Also not supported: non-string objects.
+    if time_cols is None:
+        time_cols = set({})
+    if timedelta_cols is None:
+        time_cols = set({})
     cols = arr.dtype.names
     columns = {}
     for col in cols:
-        m = {}
-        d = arr.dtype[col]
+        col_meta = {}
+        col_dtype = arr.dtype[col]
 
-        if d.kind == 'M':
+        if col_dtype.kind == 'M':
             if time_ref is None:
                 raise (Exception(
                     'Cannot convert timestamps without time reference!'))
 
-            # Note: Since numpy datetime64 types are note timezone aware, we must assume the datetimes
-            # use the same timezone.
-            m['type'] = 'time'
+            # Note: Since numpy datetime64 types are note timezone aware, we must assume the
+            # datetimes use the same timezone.
+            col_meta['type'] = 'time'
             arr[col] = (arr[col] - np.datetime64(
                 time_ref.replace(tzinfo=None))) / np.timedelta64(1, 's')
-        elif d.kind == 'm':
-            m['type'] = 'timedelta'
+        elif col_dtype.kind == 'm':
+            col_meta['type'] = 'timedelta'
             arr[col] = arr[col] / np.timedelta64(1, 's')
-        elif d == h5.string_dtype():
-            if h5.check_vlen_dtype(d) != str:
+        elif col_dtype == h5.string_dtype():
+            if h5.check_vlen_dtype(col_dtype) != str:
                 arr[col] = arr[col].astype(h5.string_dtype())
-            m['type'] = 'string'
+            col_meta['type'] = 'string'
         elif col in time_cols:
             # Assume offset from reference in appropriate units.
-            m['type'] = 'time'
-            if d.type != 'f':
+            col_meta['type'] = 'time'
+            if col_dtype.type != 'f':
                 arr[col] = arr[col].astype('f8')
         elif col in timedelta_cols:
             # Assume delta in appropriate units.
-            m['type'] = 'timedelta'
-            if d.type != 'f':
+            col_meta['type'] = 'timedelta'
+            if col_dtype.type != 'f':
                 arr[col] = arr[col].astype('f8')
-        elif d.kind in ['i', 'u']:
-            m['type'] = 'integer'
-            m['signed'] = d.kind == 'i'
+        elif col_dtype.kind in ['i', 'u']:
+            col_meta['type'] = 'integer'
+            col_meta['signed'] = col_dtype.kind == 'i'
         else:
             typenames = {'b': 'boolean', 'f': 'real', 'c': 'complex'}
-            m['type'] = typenames[d.kind]
-        columns[col] = m
+            col_meta['type'] = typenames[col_dtype.kind]
+        columns[col] = col_meta
 
     meta = {'columns': columns}
     return meta, arr
 
 
 def json2dict(json_str: str) -> Dict[str, Any]:
+    """Convert JSON string to python dictionary."""
     if not isinstance(json_str, str):
         raise Exception(f'Expecting string, found {type(json_str)}')
     return json.loads(json_str)
 
 
-def dict2json(json_dict: Dict[str, Any], format: bool = True) -> str:
+def dict2json(json_dict: Dict[str, Any], beautify: bool = True) -> str:
+    """Convert JSON-compatible python dictionary to beautified JSON string."""
     if not isinstance(json_dict, dict):
         raise Exception(f'Expecting dictionary, found {type(json_dict)}')
     json_str = json.dumps(json_dict)
-    return jsb.beautify(json_str) if format else json_str
+    return jsb.beautify(json_str) if beautify else json_str

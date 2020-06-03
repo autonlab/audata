@@ -1,8 +1,10 @@
-import h5py as h5
-
+"""Wrapper for Group types."""
 from typing import Dict, List, Iterable, Tuple, Union
 
+import h5py as h5
+
 from audata.element import Element
+from audata.dataset import Dataset
 
 
 class Group(Element):
@@ -17,7 +19,7 @@ class Group(Element):
             raise Exception(f'Invalid parent: {type(au_parent)}')
 
         if isinstance(au_parent, Element):
-            parent = au_parent._h5
+            parent = au_parent.hdf
             if not isinstance(parent, h5.Group):
                 raise Exception(f'Invalid parent: {type(parent)}')
 
@@ -28,8 +30,8 @@ class Group(Element):
                     raise Exception(
                         f'Path {name} was not found in {parent.file.filename}:{parent.name}'
                     )
-                else:
-                    target = parent[name]
+
+                target = parent[name]
             if not isinstance(target, h5.Group):
                 raise Exception(
                     f'Path "{name}" is not a group in {parent.file.filename}:{parent.name}'
@@ -39,10 +41,10 @@ class Group(Element):
 
     def list(self) -> Dict[str, List[str]]:
         """List all child attributes, groups, and datasets."""
-        attrs = list(self._h5.attrs)
-        others = list(self._h5)
-        groups = [g for g in others if isinstance(self._h5[g], h5.Group)]
-        datasets = [d for d in others if isinstance(self._h5[d], h5.Dataset)]
+        attrs = list(self.hdf.attrs)
+        others = list(self.hdf)
+        groups = [g for g in others if isinstance(self.hdf[g], h5.Group)]
+        datasets = [d for d in others if isinstance(self.hdf[d], h5.Dataset)]
         return {'attributes': attrs, 'groups': groups, 'datasets': datasets}
 
     def recurse(self) -> Iterable[Tuple[Element, str]]:
@@ -53,7 +55,7 @@ class Group(Element):
         Returns:
             Iterable (generator) of tuples of (object: Element, name: str).
         """
-        names = [n for n in list(self._h5) if not n.startswith('.')]
+        names = [n for n in list(self.hdf) if not n.startswith('.')]
         for name in names:
             elem = self.__getitem__(name)
             if isinstance(elem, Group):
@@ -64,39 +66,38 @@ class Group(Element):
 
     def __repr__(self):
         lines = []
-        l = self.list()
+        elems = self.list()
         if self.name in ('', '/'):
             lines.append('<ROOT>')
         else:
             lines.append(self.name)
 
-        for t in l['attributes']:
-            lines.append(f'  [A] {t}')
-        for t in l['groups']:
-            lines.append(f'  [G] {t}')
-        for t in l['datasets']:
-            lines.append(f'  [D] {t}')
+        for attr in elems['attributes']:
+            lines.append(f'  [A] {attr}')
+        for group in elems['groups']:
+            lines.append(f'  [G] {group}')
+        for dataset in elems['datasets']:
+            lines.append(f'  [D] {dataset}')
         return '\n'.join(lines)
 
     def __str__(self):
         return self.__repr__()
 
     def __getitem__(self, key: str) -> Union['Dataset', 'Group', None]:
-        if self._h5 is None:
+        if self.hdf is None:
             raise Exception('No group opened.')
 
         if key == '':
             return Group(self, key)
 
-        if key in self._h5:
-            if isinstance(self._h5[key], h5.Dataset):
-                from audata.dataset import Dataset
+        if key in self.hdf:
+            if isinstance(self.hdf[key], h5.Dataset):
                 return Dataset(self, key)
-            elif isinstance(self._h5[key], h5.Group):
+            elif isinstance(self.hdf[key], h5.Group):
                 return Group(self, key)
             else:
                 raise Exception('Unsure how to handle class: {}'.format(
-                    type(self._h5[key])))
+                    type(self.hdf[key])))
         else:
             return None
 
@@ -107,23 +108,23 @@ class Group(Element):
                     overwrite: bool = True,
                     **kwargs):
 
-        if self._h5 is None:
+        if self.hdf is None:
             raise Exception('No group opened.')
 
         if value is None:
-            if key in self._h5:
-                del self._h5[key]
+            if key in self.hdf:
+                del self.hdf[key]
         else:
-            from audata.dataset import Dataset
             Dataset.new(self, key, value, overwrite=overwrite, **kwargs)
 
     def __contains__(self, key: str) -> bool:
-        return self._h5.__contains__(key)
+        return self.hdf.__contains__(key)
 
     def new_dataset(
             self, name: str,
             value: Union[h5.
                          Dataset, 'np.ndarray', 'np.recarray', 'pd.DataFrame'],
             **kwargs):
+        """Create a new dataset."""
 
         self.__setitem__(name, value, **kwargs)

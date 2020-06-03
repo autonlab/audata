@@ -1,15 +1,14 @@
+"""HDF5 file wrapper class."""
 import os
-import h5py as h5
-from dateutil import parser
 import datetime as dt
-import tzlocal
-import pandas as pd
-import numpy as np
-
 from typing import Optional, Union, Literal
 
+import tzlocal
+import h5py as h5
+from dateutil import parser
+
 from audata import __VERSION__, __DATA_VERSION__
-from audata._utils import json2dict, dict2json
+from audata._utils import dict2json
 from audata.group import Group
 
 
@@ -67,12 +66,12 @@ class File(Group):
                 False if Unix timestamps (UTC) should be returned instead.
         """
         if not isinstance(file, h5.File):
-            raise Exception(f'Invalid file type: {type(file)}')
+            raise ValueError(f'Invalid file type: {type(file)}')
 
-        self._time_reference = time_reference
-        self.return_datetimes = return_datetimes
         super().__init__(file)
-        self.time_reference = time_reference
+        if time_reference is not None:
+            self.time_reference = time_reference
+        self.return_datetimes = return_datetimes
 
     def __del__(self):
         if self is not None:
@@ -86,7 +85,7 @@ class File(Group):
         Can be set with either a `dt.datetime` object or a `str` that can be parsed as
         a datetime. If a naive datetime is provided, the local timezone will be inferred.
         """
-        return self._time_reference
+        return parser.parse(self.meta_data['time']['origin'])
 
     @time_reference.setter
     def time_reference(self, new_ref: Union[str, dt.datetime]):
@@ -103,12 +102,11 @@ class File(Group):
             # We need a timezone. If none is given, assume it's local time.
             if new_ref.tzinfo is None:
                 new_ref = tzlocal.get_localzone().localize(new_ref)
-            self._time_reference = new_ref
             new_ref_str = new_ref.strftime(File.DateTimeFormat)
 
             data = self.meta_data
             data['time']['origin'] = new_ref_str
-            self._h5['.meta'].attrs['data'] = dict2json(data)
+            self.hdf['.meta'].attrs['data'] = dict2json(data)
 
     @classmethod
     def new(cls,
@@ -145,13 +143,13 @@ class File(Group):
         if time_reference == 'now':
             time_reference = dt.datetime.now(tz=tzlocal.get_localzone())
 
-        f = h5.File(filename, 'w', **kwargs)
-        f.create_group('.meta')
-        f['.meta'].attrs['audata'] = dict2json({
+        h5_file = h5.File(filename, 'w', **kwargs)
+        h5_file.create_group('.meta')
+        h5_file['.meta'].attrs['audata'] = dict2json({
             'version': __VERSION__,
             'data_version': __DATA_VERSION__
         })
-        f['.meta'].attrs['data'] = dict2json({
+        h5_file['.meta'].attrs['data'] = dict2json({
             'title': title,
             'author': author,
             'organization': organization,
@@ -160,10 +158,10 @@ class File(Group):
                 'units': 'seconds'
             }
         })
-        c = cls(f,
-                time_reference=time_reference,
-                return_datetimes=return_datetimes)
-        return c
+        au_file = cls(h5_file,
+                      time_reference=time_reference,
+                      return_datetimes=return_datetimes)
+        return au_file
 
     @classmethod
     def open(cls,
@@ -189,24 +187,25 @@ class File(Group):
             The opened file object.
         """
         if not os.path.exists(filename):
-            if create: return cls.new(filename, **kwargs)
-            else: raise Exception(f'File not found: {filename}')
+            if create:
+                return cls.new(filename, **kwargs)
+            else:
+                raise Exception(f'File not found: {filename}')
 
-        f = h5.File(filename, 'r' if readonly else 'a')
-        c = cls(f, return_datetimes=return_datetimes)
-        c._time_reference = parser.parse(c.meta_data['time']['origin'])
-        return c
+        h5_file = h5.File(filename, 'r' if readonly else 'a')
+        au_file = cls(h5_file, return_datetimes=return_datetimes)
+        return au_file
 
     def close(self):
         """Close the file handle."""
-        if self._h5 is not None:
-            self._h5.close()
+        if self.hdf is not None:
+            self.hdf.close()
             self.clear()
 
     def flush(self):
         """Flush changes to disk."""
-        if self._h5 is not None:
-            self._h5.flush()
+        if self.hdf is not None:
+            self.hdf.flush()
         else:
             raise Exception('No file opened!')
 
@@ -219,5 +218,5 @@ class File(Group):
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, exit_type, value, traceback):
         self.close()
