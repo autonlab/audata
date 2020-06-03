@@ -1,0 +1,6 @@
+#!/bin/bash
+
+./clean
+./rebuild
+
+twine upload dist/*
