@@ -12,14 +12,6 @@ Subpackages
 Submodules
 ----------
 
-audata.annotation module
-------------------------
-
-.. automodule:: audata.annotation
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 audata.dataset module
 ---------------------
 
