@@ -27,6 +27,6 @@ setup(
     install_requires=[
         'numpy', 'pandas', 'h5py', 'jsbeautifier', 'lorem', 'tzlocal', 'h5py'
     ],
-    python_requires='>=3.8',
+    python_requires='>=3.7',
     include_dirs=[np.get_include()],
     packages=find_packages())

@@ -1,7 +1,7 @@
 """HDF5 file wrapper class."""
 import os
 import datetime as dt
-from typing import Optional, Union, Literal
+from typing import Optional, Union
 
 import tzlocal
 import h5py as h5
@@ -112,7 +112,7 @@ class File(Group):
     def new(cls,
             filename: str,
             overwrite: bool = False,
-            time_reference: Union[Literal['now'], dt.datetime] = 'now',
+            time_reference: Union[str, dt.datetime] = 'now',
             title: Optional[str] = None,
             author: Optional[str] = None,
             organization: Optional[str] = None,
