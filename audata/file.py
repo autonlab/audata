@@ -5,6 +5,7 @@ from typing import Optional, Union
 
 import tzlocal
 import h5py as h5
+from datetime import datetime
 from dateutil import parser
 
 from audata import __VERSION__, __DATA_VERSION__
@@ -85,7 +86,11 @@ class File(Group):
         Can be set with either a `dt.datetime` object or a `str` that can be parsed as
         a datetime. If a naive datetime is provided, the local timezone will be inferred.
         """
-        return parser.parse(self.meta_data['time']['origin'])
+        if 'time' in self.meta_data and 'origin' in self.meta_data['time']:
+            return parser.parse(self.meta_data['time']['origin'])
+        else:
+            # If no origin time is in the file, assume it is time from epoch
+            return datetime.utcfromtimestamp(0)
 
     @time_reference.setter
     def time_reference(self, new_ref: Union[str, dt.datetime]):

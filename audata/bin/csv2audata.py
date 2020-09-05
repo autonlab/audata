@@ -43,8 +43,7 @@ def _addcsv(au_file: audata.File, name: str, path: str):
                     data[col] = data[col].apply(parse)
                 else:
                     print('    Parsing time offset column: {}'.format(col))
-                    data[col] = au_file.time_reference + data[
-                        col] * dt.timedelta(seconds=1)
+                    data[col] = au_file.time_reference + data[col] * dt.timedelta(seconds=1)
 
             else:
                 arity = len(data[col].unique())

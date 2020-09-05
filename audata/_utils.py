@@ -10,23 +10,21 @@ import jsbeautifier as jsb
 
 
 def df_from_audata(rec,
-                   meta: Dict[str, Any],
+                   columns: Dict[str, Any],
                    time_ref: Optional[dt.datetime] = None,
                    datetimes: bool = True) -> pd.DataFrame:
     """Create a pandas DataFrame from an audata Dataset."""
 
     data = pd.DataFrame(data=rec)
-    for col in meta['columns']:
-        col_meta = meta['columns'][col]
+    for col in columns:
+        col_meta = columns[col]
         if col_meta['type'] == 'factor':
-            data[col] = pd.Categorical.from_codes(data[col].values,
-                                                  col_meta['levels'])
+            data[col] = pd.Categorical.from_codes(data[col].values, col_meta['levels'])
         elif col_meta['type'] == 'time':
             if time_ref is None:
                 raise Exception('Cannot read timestamps without reference!')
             if datetimes:
-                data[col] = time_ref + data[col].values * dt.timedelta(
-                    seconds=1)
+                data[col] = time_ref + data[col].values * dt.timedelta(seconds=1)
             else:
                 data[col] += time_ref.timestamp()
         elif col_meta['type'] == 'timedelta':
@@ -68,8 +66,7 @@ def audata_from_df(data: pd.DataFrame,
             col_meta['signed'] = col_dtype.kind == 'i'
         elif col_dtype.kind == 'M':
             if time_ref is None:
-                raise (Exception(
-                    'Cannot convert timestamps without time reference!'))
+                raise (Exception('Cannot convert timestamps without time reference!'))
 
             col_meta['type'] = 'time'
             data[col] = (data[col].dt.tz_convert(time_ref.tzinfo) -
@@ -115,14 +112,12 @@ def audata_from_arr(arr: Union[np.ndarray, np.recarray],
 
         if col_dtype.kind == 'M':
             if time_ref is None:
-                raise (Exception(
-                    'Cannot convert timestamps without time reference!'))
+                raise (Exception('Cannot convert timestamps without time reference!'))
 
-            # Note: Since numpy datetime64 types are note timezone aware, we must assume the
-            # datetimes use the same timezone.
+            # Note: Since numpy datetime64 types are not timezone aware, we must
+            # assume the datetimes use the same timezone.
             col_meta['type'] = 'time'
-            arr[col] = (arr[col] - np.datetime64(
-                time_ref.replace(tzinfo=None))) / np.timedelta64(1, 's')
+            arr[col] = (arr[col] - np.datetime64(time_ref.replace(tzinfo=None))) / np.timedelta64(1, 's')
         elif col_dtype.kind == 'm':
             col_meta['type'] = 'timedelta'
             arr[col] = arr[col] / np.timedelta64(1, 's')
@@ -151,6 +146,36 @@ def audata_from_arr(arr: Union[np.ndarray, np.recarray],
     meta = {'columns': columns}
     return meta, arr
 
+# Makes a best effort to determine column type based only on dtype. Returns a
+# dict containing keys 'type' and, if applicable, 'signed'.
+# TODO(gus): At somep point, it would be nice to merge this with how
+# audata_from_df() and audata_from_arr() determine column type.
+def get_coltype_from_dtype_only(dtype) -> Dict[str, Any]:
+
+    if dtype.kind == 'M':
+        return { 'type': 'time' }
+    elif dtype.kind == 'm':
+        return { 'type': 'timedelta' }
+    elif dtype == h5.string_dtype():
+        return { 'type': 'string' }
+    elif dtype.kind == 'i':
+        return {
+            'type': 'integer',
+            'signed': False
+        }
+    elif dtype.kind == 'u':
+        return {
+            'type': 'integer',
+            'signed': True
+        }
+    elif dtype.kind == 'b':
+        return { 'type': 'boolean' }
+    elif dtype.kind == 'f':
+        return {'type': 'real' }
+    elif dtype.kind == 'c':
+        return {'type': 'complex' }
+    else:
+        raise Exception('Unrecognized column type.')
 
 def json2dict(json_str: str) -> Dict[str, Any]:
     """Convert JSON string to python dictionary."""

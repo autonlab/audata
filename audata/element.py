@@ -58,14 +58,15 @@ class Element:
     @property
     def valid(self) -> bool:
         """Is element valid? (`bool`, read-only)"""
-        return (self.parent is
-                not None) and (self.file is not None) and (self._h5 is not None)
+        return \
+            self.parent is not None and \
+            self.file is not None and \
+            self._h5 is not None
 
     @property
     def meta(self) -> Dict[str, Any]:
         """Element meta data (HDF5 .meta attribute) (JSON dictionary)"""
-        return json2dict(self._h5.attrs['.meta']) \
-            if self.valid and ('.meta' in self._h5.attrs) else None
+        return json2dict(self._h5.attrs['.meta']) if self.valid and '.meta' in self._h5.attrs else {}
 
     @meta.setter
     def meta(self, data: Dict[str, Any]):
@@ -76,11 +77,15 @@ class Element:
     @property
     def meta_audata(self) -> Dict[str, Any]:
         """File audata meta, '.meta/audata' attribute (JSON dictionary, read-only)"""
-        return json2dict(
-            self._h5.file['.meta'].attrs['audata']) if self.valid else None
+        try:
+            return json2dict(self._h5.file['.meta'].attrs['audata'])
+        except:
+            return {}
 
     @property
     def meta_data(self) -> Dict[str, Any]:
         """File data meta, '.meta/data' attribute (JSON dictionary, read-only)"""
-        return json2dict(
-            self._h5.file['.meta'].attrs['data']) if self.valid else None
+        try:
+            return json2dict(self._h5.file['.meta'].attrs['data'])
+        except:
+            return {}

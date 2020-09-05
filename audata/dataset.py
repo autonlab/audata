@@ -148,12 +148,10 @@ class Dataset(Element):
             return rec
         if isinstance(rec, np.void):
             rec = np.array([rec], dtype=rec.dtype)
-        meta = self.meta
 
         if datetimes is None:
             datetimes = self.file.return_datetimes
-        data = utils.df_from_audata(rec, meta, self.file.time_reference,
-                                    datetimes)
+        data = utils.df_from_audata(rec, self.columns, self.file.time_reference, datetimes)
         return data
 
     def append(self,
@@ -204,7 +202,20 @@ class Dataset(Element):
     @property
     def columns(self) -> Dict[str, Any]:
         """Get dictionary of column specifications."""
-        return self.meta['columns']
+
+        # Get the column definitions from the dataset meta
+        metacols = self.meta['columns'] if self.meta is not None and 'columns' in self.meta else {}
+
+        # Get the column names from the dataset
+        try:
+            dscols = {colname: utils.get_coltype_from_dtype_only(self.hdf.dtype[colname]) for colname in self.hdf.dtype.names}
+        except:
+            dscols = {}
+
+        # TODO: Handle non-compound datasets
+
+        # Return a merge of the two, with meta cols overridding the dset cols.
+        return {**dscols, **metacols}
 
     @property
     def shape(self) -> Tuple[int, int]:
