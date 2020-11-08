@@ -179,8 +179,6 @@ def get_coltype_from_dtype_only(dtype) -> Dict[str, Any]:
 
 def json2dict(json_str: str) -> Dict[str, Any]:
     """Convert JSON string to python dictionary."""
-    if not isinstance(json_str, str):
-        raise Exception(f'Expecting string, found {type(json_str)}')
     return json.loads(json_str)
 
 
@@ -188,5 +186,8 @@ def dict2json(json_dict: Dict[str, Any], beautify: bool = True) -> str:
     """Convert JSON-compatible python dictionary to beautified JSON string."""
     if not isinstance(json_dict, dict):
         raise Exception(f'Expecting dictionary, found {type(json_dict)}')
-    json_str = json.dumps(json_dict)
-    return jsb.beautify(json_str) if beautify else json_str
+
+    if beautify:
+        return jsb.beautify(json.dumps(json_dict))
+    else:
+        return json.dumps(json_dict)

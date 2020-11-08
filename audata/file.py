@@ -1,7 +1,7 @@
 """HDF5 file wrapper class."""
 import os
 import datetime as dt
-from typing import Optional, Union
+from typing import Optional, Union, Dict, Any
 
 import tzlocal
 import h5py as h5
@@ -9,8 +9,9 @@ from datetime import datetime
 from dateutil import parser
 
 from audata import __VERSION__, __DATA_VERSION__
-from audata._utils import dict2json
+from audata._utils import dict2json, json2dict
 from audata.group import Group
+
 
 
 class File(Group):
@@ -86,41 +87,47 @@ class File(Group):
         Can be set with either a `dt.datetime` object or a `str` that can be parsed as
         a datetime. If a naive datetime is provided, the local timezone will be inferred.
         """
-        if 'time' in self.meta_data and 'origin' in self.meta_data['time']:
-            return parser.parse(self.meta_data['time']['origin'])
+        if 'time_origin' in self.file_meta:
+            origin = self.file_meta['time_origin']
+            if isinstance(origin, str):
+                return parser.parse(origin)
+            else:
+                return datetime.utcfromtimestamp(origin)
         else:
             # If no origin time is in the file, assume it is time from epoch
+            print("No time origin found. Imputing epoch time.")
             return datetime.utcfromtimestamp(0)
 
     @time_reference.setter
     def time_reference(self, new_ref: Union[str, dt.datetime]):
+
         if not self.valid:
             raise Exception('Attempting to use uninitialized File!')
 
-        # If it's a date/time string, that's fine, but try to parse it first to make sure
-        # the format is always consistent.
+        # If it's a date/time string, that's fine, but try to parse it first to
+        # make sure the format is always consistent.
         if isinstance(new_ref, str):
             new_ref = parser.parse(new_ref)
 
         # Now only accept datetime objects.
         if isinstance(new_ref, dt.datetime):
+
             # We need a timezone. If none is given, assume it's local time.
             if new_ref.tzinfo is None:
                 new_ref = tzlocal.get_localzone().localize(new_ref)
+
             new_ref_str = new_ref.strftime(File.DateTimeFormat)
 
-            data = self.meta_data
-            data['time']['origin'] = new_ref_str
-            self.hdf['.meta'].attrs['data'] = dict2json(data)
+            data = self.file_meta
+            data['time_origin'] = new_ref_str
+            self.file_meta = data
 
     @classmethod
     def new(cls,
             filename: str,
             overwrite: bool = False,
             time_reference: Union[str, dt.datetime] = 'now',
-            title: Optional[str] = None,
-            author: Optional[str] = None,
-            organization: Optional[str] = None,
+            metadata: Dict[str, Any] = {},
             return_datetimes: bool = True,
             **kwargs) -> 'File':
         """
@@ -132,9 +139,7 @@ class File(Group):
                 existing file will cause an exception.
             time_reference: The time reference to use, or 'now' to use the time
                 of file creation.
-            title: A title for the dataset.
-            author: The dataset author.
-            organization: The dataset organization.
+            metadata: An optional dict containing global metadata for the file.
             return_datetimes: If True times will be converted to `dt.datetime` objects,
                 otherwise Unix (UTC) timestamps.
             **kwargs: Additional keyword arguments will be passed on to `h5.File`'s constructor.
@@ -148,25 +153,19 @@ class File(Group):
         if time_reference == 'now':
             time_reference = dt.datetime.now(tz=tzlocal.get_localzone())
 
+        # Create the hdf5 file
         h5_file = h5.File(filename, 'w', **kwargs)
-        h5_file.create_group('.meta')
-        h5_file['.meta'].attrs['audata'] = dict2json({
-            'version': __VERSION__,
-            'data_version': __DATA_VERSION__
+
+        # Set metadata
+        h5_file.attrs['.meta'] = dict2json({
+            **{
+                'audata_pkg_version': __VERSION__,
+                'audata_version': __DATA_VERSION__,
+                'time_origin': time_reference.strftime(File.DateTimeFormat),
+            },
+            **metadata
         })
-        h5_file['.meta'].attrs['data'] = dict2json({
-            'title': title,
-            'author': author,
-            'organization': organization,
-            'time': {
-                'origin': time_reference.strftime(File.DateTimeFormat),
-                'units': 'seconds'
-            }
-        })
-        au_file = cls(h5_file,
-                      time_reference=time_reference,
-                      return_datetimes=return_datetimes)
-        return au_file
+        return cls(h5_file, time_reference=time_reference, return_datetimes=return_datetimes)
 
     @classmethod
     def open(cls,

@@ -75,17 +75,25 @@ class Element:
         self._h5.attrs['.meta'] = dict2json(data)
 
     @property
-    def meta_audata(self) -> Dict[str, Any]:
-        """File audata meta, '.meta/audata' attribute (JSON dictionary, read-only)"""
+    def file_meta(self) -> Dict[str, Any]:
+        """File metadata (HDF5 .meta attribute of the built-in root group) (JSON dictionary, read-only)"""
+
+        # Get the .meta attribute if it exists, otherwise return empty object now
         try:
-            return json2dict(self._h5.file['.meta'].attrs['audata'])
+            ms = self._h5.file.attrs['.meta']
         except:
+            print("File metadata not found.")
             return {}
 
-    @property
-    def meta_data(self) -> Dict[str, Any]:
-        """File data meta, '.meta/data' attribute (JSON dictionary, read-only)"""
+        # Parse and return the .meta json object
         try:
-            return json2dict(self._h5.file['.meta'].attrs['data'])
-        except:
+            return json2dict(ms)
+        except Exception as e:
+            print(f"There was an error decoding the file metadata!\n\nMetadata JSON:\n{self._h5.file.attrs['.meta'][0]}\n\nJSON decode exception:\n{e}\n")
             return {}
+
+    @file_meta.setter
+    def file_meta(self, data: Dict[str, Any]):
+        if not self.valid:
+            raise Exception('Attempting to set file meta on invalid elemenet!')
+        self._h5.file.attrs['.meta'] = dict2json(data)

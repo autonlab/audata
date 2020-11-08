@@ -41,7 +41,7 @@ if __name__ == '__main__':
 
     # Read some data.
     print(f)
-    print(f['.meta'])
+    print(f.file_meta)
     print(f.time_reference)
     print(f['test/mydf'])
     print(f['test']['mydf'][:])
@@ -53,7 +53,7 @@ if __name__ == '__main__':
     with File.open('test.h5') as f:
         # Read some data.
         print(f)
-        print(f['.meta'])
+        print(f.file_meta)
         print(f.time_reference)
         print(f['test']['mydf'])
         print(f['test/mydf'][:])
