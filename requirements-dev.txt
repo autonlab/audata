@@ -1,8 +1,7 @@
-sphinx>=3
-sphinx-rtd-theme
 tzlocal
 h5py==2.10.0
 pandas
 numpy
 jsbeautifier
 lorem
+twine
