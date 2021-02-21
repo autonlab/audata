@@ -79,6 +79,12 @@ class File(Group):
         if self is not None:
             self.close()
 
+    def __delitem__(self, key):
+        """
+        Deletes a group/dataset.
+        """
+        del self._h5[key]
+
     @property
     def time_reference(self) -> dt.datetime:
         """
