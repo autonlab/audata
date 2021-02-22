@@ -17,14 +17,21 @@ def df_from_audata(rec,
 
     data = pd.DataFrame(data=rec)
     for col in columns:
+
         col_meta = columns[col]
+
         if col_meta['type'] == 'factor':
             data[col] = pd.Categorical.from_codes(data[col].values, col_meta['levels'])
+
         elif col_meta['type'] == 'time':
+
             if time_ref is None:
                 raise Exception('Cannot read timestamps without reference!')
+
+            # If datetimes were requested, convert the time column into a seconds time delta and add it to the time ref
             if datetimes:
-                data[col] = time_ref + data[col].values * dt.timedelta(seconds=1)
+                data[col] = time_ref + pd.to_timedelta(data[col], unit='s')
+
             else:
                 data[col] += time_ref.timestamp()
         elif col_meta['type'] == 'timedelta':
