@@ -49,7 +49,7 @@ def audata_from_df(data: pd.DataFrame,
     if time_cols is None:
         time_cols = set({})
     if timedelta_cols is None:
-        time_cols = set({})
+        timedelta_cols = set({})
     cols = list(data)
     columns = {}
     dtype_map = {}
