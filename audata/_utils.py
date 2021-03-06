@@ -76,6 +76,9 @@ def audata_from_df(data: pd.DataFrame,
                 raise (Exception('Cannot convert timestamps without time reference!'))
 
             col_meta['type'] = 'time'
+            if type(data[col].dtype) == type(np.array([1]).dtype):
+                data[col] = data[col].dt.tz_localize(tz='UTC')
+            
             data[col] = (data[col].dt.tz_convert(time_ref.tzinfo) -
                          time_ref).dt.total_seconds()
         elif col_dtype.kind == 'm':
@@ -198,3 +201,6 @@ def dict2json(json_dict: Dict[str, Any], beautify: bool = True) -> str:
         return jsb.beautify(json.dumps(json_dict))
     else:
         return json.dumps(json_dict)
+
+#def validate_categorical(cat1 : pd.DataFrame, cat2 : pd.DataFrame):
+
