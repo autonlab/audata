@@ -77,6 +77,7 @@ def audata_from_df(data: pd.DataFrame,
 
             col_meta['type'] = 'time'
             if type(data[col].dtype) == type(np.array([1]).dtype):
+                print("Default timezone not provided - Localizing to UTC")
                 data[col] = data[col].dt.tz_localize(tz='UTC')
             
             data[col] = (data[col].dt.tz_convert(time_ref.tzinfo) -
