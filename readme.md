@@ -6,11 +6,15 @@ Auton Universal Data (audata) Library
 
 ## Installation
 
+To install audata, simply use pip:
+
 ```
 pip install audata
 ```
 
-## Bulding
+## Building
+
+If you'd like to build from source code (e.g. for development purposes):
 
 ```
 python setup.py bdist_wheel
