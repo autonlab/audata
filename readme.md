@@ -1,16 +1,22 @@
-# AUData
+# Auton Universal Data
 
-Auton Universal Data (audata) Library
+Welcome to the source code for Auton Universal Data (AUData). AUData is both a file schema and a toolset. This source repository contains the documentation of the file specification and a Python library for working with audata files.
 
-[Documentation](https://audata.readthedocs.io/en/latest/)
+## Documentation
+
+Further documentation is available at [audata.readthedocs.io](https://audata.readthedocs.io/en/latest/)
 
 ## Installation
+
+To install audata, simply use pip:
 
 ```
 pip install audata
 ```
 
-## Bulding
+## Building
+
+If you'd like to build from source code (e.g. for development purposes):
 
 ```
 python setup.py bdist_wheel
