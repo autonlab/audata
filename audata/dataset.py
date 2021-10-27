@@ -139,7 +139,7 @@ class Dataset(Element):
 
     def get(self,
             idx=slice(-1),
-            raw: bool = False,
+            raw: Optional[bool] = False,
             datetimes: Optional[bool] = None) -> pd.DataFrame:
         """Return a dataset as a pandas DataFrame."""
 
