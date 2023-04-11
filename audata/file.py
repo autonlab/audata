@@ -77,7 +77,7 @@ class File(Group):
 
     def __del__(self):
         if self is not None:
-            self.close()
+            self.clear()
 
     def __delitem__(self, key):
         """
