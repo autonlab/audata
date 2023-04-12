@@ -29,7 +29,7 @@ setup(
     install_requires=[
         'numpy',
         'pandas',
-        'h5py==2.10.0',
+        'h5py',
         'jsbeautifier',
         'lorem',
         'tzlocal',
