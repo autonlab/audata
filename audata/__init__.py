@@ -1,7 +1,7 @@
 """Define version and import high-level objects."""
 __VERSION_MAJOR__ = '1'
 __VERSION_MINOR__ = '0'
-__VERSION_BUILD__ = '3'
+__VERSION_BUILD__ = '4'
 
 __DEBUG = False
 if __DEBUG:
